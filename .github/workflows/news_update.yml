@@ -19,9 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install feedparser pytz
-          pip install openai==0.28
+        run: pip install "openai>=1.0.0" feedparser pytz
 
       - name: Run news script
         run: python generate_news.py
@@ -31,7 +29,7 @@ jobs:
           echo "✅ Listing news directory content:"
           ls -lh news
           echo "✅ File preview:"
-          head -n 20 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
+          head -n 40 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
 
       - name: Commit changes
         run: |
