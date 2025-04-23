@@ -1,33 +1,52 @@
-name: Update Dubai News
+import feedparser
+from datetime import datetime
+import pytz
 
-on:
-  schedule:
-    - cron: '0 5 * * *'  # Täglich um 9:00 Uhr Dubai-Zeit (5:00 UTC)
-  workflow_dispatch:
+RSS_FEEDS = [
+    "https://www.thenationalnews.com/page/-/rss/dubai",
+    "https://gulfnews.com/rss?path=/uae",
+    "https://www.arabianbusiness.com/feed"
+]
 
-jobs:
-  update-news:
-    runs-on: ubuntu-latest
+MAX_ARTICLES = 3
 
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v3
+def fetch_news():
+    entries = []
+    for url in RSS_FEEDS:
+        feed = feedparser.parse(url)
+        entries.extend(feed.entries)
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+    dubai_news = [
+        entry for entry in entries
+        if "dubai" in entry.title.lower() or "dubai" in entry.get("description", "").lower()
+    ]
 
-      - name: Install dependencies
-        run: python -m pip install feedparser pytz requests
+    dubai_news.sort(key=lambda x: x.get("published_parsed"), reverse=True)
+    return dubai_news[:MAX_ARTICLES]
 
-      - name: Run news script
-        run: python generate_news.py
+def format_news(news_items):
+    today = datetime.now(pytz.timezone("Asia/Dubai")).strftime("%d. %B %Y")
 
-      - name: Commit changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add news/dubai-news.txt
-          git commit -m "Daily Dubai News Update" || echo "No changes to commit"
-          git push
+    if not news_items:
+        return f"Dubai-News – {today}\n\nKeine relevanten Dubai-News in den letzten 24 Stunden."
+
+    lines = [f"Dubai-News – {today}\n"]
+    for i, item in enumerate(news_items, start=1):
+        title = item.title.strip()
+        link = item.link.strip()
+        summary = item.get("summary", "").strip()
+        lines.append(f"{i}. {title}\n{summary}\n{link}\n")
+
+    return "\n".join(lines).strip()
+
+def write_to_file(content):
+    with open("news/dubai-news.txt", "w", encoding="utf-8") as f:
+        f.write(content)
+
+def main():
+    news = fetch_news()
+    formatted = format_news(news)
+    write_to_file(formatted)
+
+if __name__ == "__main__":
+    main()
