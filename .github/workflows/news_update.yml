@@ -9,33 +9,35 @@ jobs:
   update-news:
     runs-on: ubuntu-latest
 
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
     steps:
-      - name: 📥 Check out repository
+      - name: Check out repository
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install feedparser pytz openai
+          pip install feedparser pytz openai requests
 
-      - name: 📰 Run news script
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Run news script
         run: python generate_news.py
 
-      - name: 🧪 Debug file output
+      - name: Debug file output
         run: |
           echo "✅ Listing news directory content:"
           ls -lh news
           echo "✅ File preview:"
-          head -n 20 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
+          head -n 40 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
 
-      - name: 💾 Commit changes
+      - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
