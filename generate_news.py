@@ -10,8 +10,12 @@ import logging
 # 🔐 Direkter API-Key (nur zu Testzwecken verwenden!)
 openai.api_key = "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"  # Ersetze durch deinen echten Key
 
-# Logging konfigurieren
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+# Logging konfigurieren mit Ausgabe in stdout (für GitHub Actions sichtbar)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
@@ -106,6 +110,7 @@ def write_to_file(blocks):
 
 def main():
     logging.info("🚀 Starte News-Aktualisierung")
+    print("✅ Logging aktiviert")
     news = fetch_news()
     blocks = format_news(news)
     write_to_file(blocks)
