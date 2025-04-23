@@ -6,6 +6,8 @@ import re
 import openai
 import os
 
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
     "https://gulfnews.com/rss?path=/uae",
