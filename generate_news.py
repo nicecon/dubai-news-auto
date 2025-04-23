@@ -2,6 +2,7 @@ import feedparser
 from datetime import datetime
 import pytz
 from html.parser import HTMLParser
+from deep_translator import GoogleTranslator
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
@@ -21,7 +22,7 @@ class FigureRemovingParser(HTMLParser):
         if tag.lower() == "figure":
             self.in_figure = True
         elif not self.in_figure:
-            pass  # Could handle valid tags here if needed
+            pass
 
     def handle_endtag(self, tag):
         if tag.lower() == "figure":
@@ -33,7 +34,7 @@ class FigureRemovingParser(HTMLParser):
 
     def handle_startendtag(self, tag, attrs):
         if not self.in_figure:
-            pass  # Only pass through tags outside figure
+            pass
 
     def get_clean_text(self):
         return ''.join(self.output).strip()
@@ -42,6 +43,12 @@ def strip_html(raw_html):
     parser = FigureRemovingParser()
     parser.feed(raw_html)
     return parser.get_clean_text()
+
+def translate_text(text):
+    try:
+        return GoogleTranslator(source='auto', target='de').translate(text)
+    except Exception:
+        return text
 
 def fetch_news():
     entries = []
@@ -65,12 +72,12 @@ def format_news(news_items):
 
     blocks = []
     for i, item in enumerate(news_items, start=1):
-        title = item.title.strip()
+        title = translate_text(item.title.strip())
         link = item.link.strip()
         summary_raw = item.get("summary", "").strip()
         if not summary_raw and "content" in item and len(item["content"]) > 0:
             summary_raw = item["content"][0].get("value", "")
-        summary = strip_html(summary_raw)
+        summary = translate_text(strip_html(summary_raw))
         block = f"Dubai-News – {today}\n\n{i}. {title}\n{summary}\n{link}"
         blocks.append(block)
 
