@@ -2,11 +2,12 @@ import feedparser
 from datetime import datetime
 import pytz
 from html.parser import HTMLParser
+import re
+import os
 import logging
 import openai
-import os
 
-# 🔐 Klassisches Interface
+# 🔐 OpenAI API-Key über Umgebungsvariable (kompatibel mit klassischem Interface)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(
