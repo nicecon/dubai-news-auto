@@ -61,7 +61,7 @@ def format_news(news_items):
     today = datetime.now(pytz.timezone("Asia/Dubai")).strftime("%d. %B %Y")
 
     if not news_items:
-        return [f"TEST Dubai-News – {today}\n\nKeine relevanten Dubai-News in den letzten 24 Stunden."]
+        return [f"Dubai-News – {today}\n\nKeine relevanten Dubai-News in den letzten 24 Stunden."]
 
     blocks = []
     for i, item in enumerate(news_items, start=1):
@@ -71,7 +71,7 @@ def format_news(news_items):
         if not summary_raw and "content" in item and len(item["content"]) > 0:
             summary_raw = item["content"][0].get("value", "")
         summary = strip_html(summary_raw)
-        block = f"TEST Dubai-News – {today}\n\n{i}. {title}\n{summary}\n{link}"
+        block = f"Dubai-News – {today}\n\n{i}. {title}\n{summary}\n{link}"
         blocks.append(block)
 
     return blocks
@@ -90,5 +90,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# Re-trigger execution
-# Re-trigger execution
