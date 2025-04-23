@@ -1,0 +1,29 @@
+name: Check Breaking Dubai News
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Alle 15 Minuten
+  workflow_dispatch:
+
+jobs:
+  breaking-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install feedparser pytz openai requests
+
+      - name: Run breaking news check
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python generate_news.py
