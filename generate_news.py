@@ -51,3 +51,4 @@ def main():
     write_to_file(blocks)
 
 if __name__ == "__main__":
+    main()
