@@ -26,7 +26,7 @@ RSS_FEEDS = [
 MAX_ARTICLES = 3
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-BREAKING_KEYWORDS = ["breaking", "explosion", "fire", "accident", "urgent", "emergency", "critical"]
+BREAKING_KEYWORDS = ["breaking"]
 
 class FigureRemovingParser(HTMLParser):
     def __init__(self):
