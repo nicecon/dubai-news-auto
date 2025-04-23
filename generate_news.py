@@ -57,18 +57,9 @@ def translate_text(text):
                 {"role": "user", "content": text}
             ]
         )
-        return refine_translation(response["choices"][0]["message"]["content"].strip())
+        return response["choices"][0]["message"]["content"].strip()
     except Exception:
         return text
-
-def refine_translation(text):
-    text = re.sub(r"\s+", " ", text)  # doppelte Leerzeichen
-    text = re.sub(r"\bAutismus -zertifizierte\b", "autismusfreundliche", text)
-    text = re.sub(r"\bKI -Konkurrenten\b", "KI-Konkurrenten", text)
-    text = re.sub(r"\bKI -Anwärter\b", "KI-Anwärter", text)
-    text = re.sub(r"\bReverse Vending Machines\b", "Rücknahmeautomaten", text)
-    text = text.replace("Mai Dubai-Branded", "Mai Dubai gebrandete")
-    return text.strip()
 
 def fetch_news():
     entries = []
