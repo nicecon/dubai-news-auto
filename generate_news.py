@@ -6,7 +6,8 @@ import re
 import openai
 import os
 
-openai.api_key = "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"
+# 🔐 Direkter API-Key (nur zu Testzwecken verwenden!)
+openai.api_key = "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"  # Ersetze durch deinen echten Key
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
@@ -25,8 +26,6 @@ class FigureRemovingParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag.lower() == "figure":
             self.in_figure = True
-        elif not self.in_figure:
-            pass
 
     def handle_endtag(self, tag):
         if tag.lower() == "figure":
@@ -35,10 +34,6 @@ class FigureRemovingParser(HTMLParser):
     def handle_data(self, data):
         if not self.in_figure:
             self.output.append(data)
-
-    def handle_startendtag(self, tag, attrs):
-        if not self.in_figure:
-            pass
 
     def get_clean_text(self):
         return ''.join(self.output).strip()
@@ -49,6 +44,7 @@ def strip_html(raw_html):
     return parser.get_clean_text()
 
 def translate_text(text):
+    print(f"🔁 Übersetze: {text[:60]}...")  # Debug: Zeigt den zu übersetzenden Text an
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",
@@ -57,8 +53,11 @@ def translate_text(text):
                 {"role": "user", "content": text}
             ]
         )
-        return response["choices"][0]["message"]["content"].strip()
-    except Exception:
+        result = response["choices"][0]["message"]["content"].strip()
+        print(f"✅ Übersetzt: {result[:60]}...")
+        return result
+    except Exception as e:
+        print(f"❌ Fehler bei Übersetzung: {e}")
         return text
 
 def fetch_news():
