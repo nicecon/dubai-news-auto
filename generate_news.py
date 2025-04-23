@@ -2,13 +2,12 @@ import feedparser
 from datetime import datetime
 import pytz
 from html.parser import HTMLParser
-import re
-import os
 import logging
-from openai import OpenAI
+import openai
+import os
 
-# 🔐 OpenAI-Client mit modernem Interface (ab Version 1.0.0)
-client = OpenAI(api_key="sk-proj-DHfFY19tPYTUIvhwtx0pYt9rjXkql8SxDuZtz1cgA6OBjVZ1")
+# 🔐 Klassisches Interface
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,14 +52,14 @@ def strip_html(raw_html):
 def translate_text(text):
     logging.info(f"🔁 Übersetze: {text[:80]}...")
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "Übersetze den folgenden Text professionell ins Deutsche."},
                 {"role": "user", "content": text}
             ]
         )
-        result = response.choices[0].message.content.strip()
+        result = response.choices[0].message["content"].strip()
         logging.info(f"✅ Übersetzt: {result[:80]}...")
         return result
     except Exception as e:
