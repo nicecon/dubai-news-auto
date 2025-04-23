@@ -2,7 +2,7 @@ name: Update Dubai News
 
 on:
   schedule:
-    - cron: '0 5 * * *'  # Täglich um 9:00 Uhr Dubai-Zeit (entspricht 5:00 UTC)
+    - cron: '0 5 * * *'  # Täglich um 9:00 Uhr Dubai-Zeit (5:00 UTC)
   workflow_dispatch:
 
 jobs:
@@ -19,11 +19,9 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests pytz
+        run: pip install feedparser pytz
 
       - name: Run news script
-        env:
-          BING_API_KEY: ${{ secrets.BING_API_KEY }}
         run: python generate_news.py
 
       - name: Commit changes
