@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install "openai>=1.0.0" feedparser pytz
+        run: pip install openai==0.28.1 feedparser pytz
 
       - name: Run news script
         run: python generate_news.py
