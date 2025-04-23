@@ -5,10 +5,10 @@ from html.parser import HTMLParser
 import re
 import os
 import logging
-import openai
+from openai import OpenAI
 
-# 🔐 OpenAI API-Key über Umgebungsvariable (kompatibel mit klassischem Interface)
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# 🔐 OpenAI API-Key aus Umgebungsvariable verwenden
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,14 +53,14 @@ def strip_html(raw_html):
 def translate_text(text):
     logging.info(f"🔁 Übersetze: {text[:80]}...")
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Übersetze den folgenden Text professionell ins Deutsche."},
+                {"role": "system", "content": "Du bist ein professioneller deutscher Nachrichtenredakteur. Übersetze präzise und stilistisch einwandfrei."},
                 {"role": "user", "content": text}
             ]
         )
-        result = response.choices[0].message["content"].strip()
+        result = response.choices[0].message.content.strip()
         logging.info(f"✅ Übersetzt: {result[:80]}...")
         return result
     except Exception as e:
