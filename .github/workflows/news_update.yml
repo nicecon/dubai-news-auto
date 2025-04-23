@@ -19,11 +19,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install feedparser pytz openai
+        run: |
+          pip install feedparser pytz
+          pip install openai==0.28
 
       - name: Run news script
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python generate_news.py
 
       - name: Debug file output
