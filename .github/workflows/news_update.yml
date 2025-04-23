@@ -19,7 +19,10 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install feedparser pytz deep-translator
+        run: pip install feedparser pytz openai
+
+      - name: Export OpenAI Key
+        run: echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
 
       - name: Run news script
         run: python generate_news.py
