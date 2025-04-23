@@ -3,14 +3,14 @@ from datetime import datetime
 import pytz
 from html.parser import HTMLParser
 import re
-import openai
 import os
 import logging
+from openai import OpenAI
 
-# 🔐 Direkter API-Key (nur zu Testzwecken verwenden!)
-openai.api_key = "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"  # Ersetze durch deinen echten Key
+# 🔐 OpenAI-Client initialisieren (ersetze durch deinen echten Key)
+client = OpenAI(api_key="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")  # <-- HIER DEIN API KEY EINTRAGEN
 
-# Logging konfigurieren mit Ausgabe in stdout (für GitHub Actions sichtbar)
+# Logging für GitHub Actions
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -54,14 +54,14 @@ def strip_html(raw_html):
 def translate_text(text):
     logging.info(f"🔁 Übersetze: {text[:80]}...")
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "Übersetze den folgenden Text professionell ins Deutsche."},
                 {"role": "user", "content": text}
             ]
         )
-        result = response["choices"][0]["message"]["content"].strip()
+        result = response.choices[0].message.content.strip()
         logging.info(f"✅ Übersetzt: {result[:80]}...")
         return result
     except Exception as e:
