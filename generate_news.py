@@ -6,7 +6,7 @@ import re
 import openai
 import os
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = "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"
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
