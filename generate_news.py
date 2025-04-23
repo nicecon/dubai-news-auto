@@ -1,6 +1,8 @@
 import feedparser
 from datetime import datetime
 import pytz
+import re
+from deep_translator import GoogleTranslator
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
@@ -9,6 +11,17 @@ RSS_FEEDS = [
 ]
 
 MAX_ARTICLES = 3
+
+def translate(text, lang="de"):
+    try:
+        return GoogleTranslator(source='auto', target=lang).translate(text)
+    except:
+        return text
+
+def strip_html(raw_html):
+    clean_text = re.sub('<figure.*?</figure>', '', raw_html, flags=re.DOTALL)  # entferne ganze <figure>-Blöcke
+    clean_text = re.sub('<[^<]+?>', '', clean_text)  # alle restlichen HTML-Tags
+    return clean_text.strip()
 
 def fetch_news():
     entries = []
@@ -28,25 +41,32 @@ def format_news(news_items):
     today = datetime.now(pytz.timezone("Asia/Dubai")).strftime("%d. %B %Y")
 
     if not news_items:
-        return f"Dubai-News – {today}\n\nKeine relevanten Dubai-News in den letzten 24 Stunden."
+        return [f"Dubai-News – {today}\n\nKeine relevanten Dubai-News in den letzten 24 Stunden."]
 
-    lines = [f"Dubai-News – {today}\n"]
+    blocks = []
     for i, item in enumerate(news_items, start=1):
-        title = item.title.strip()
+        title = translate(item.title.strip())
         link = item.link.strip()
-        summary = item.get("summary", "").strip()
-        lines.append(f"{i}. {title}\n{summary}\n{link}\n")
 
-    return "\n".join(lines).strip()
+        raw_summary = item.get("summary", "").strip()
+        if not raw_summary and "content" in item:
+            raw_summary = item.content[0].value.strip()
 
-def write_to_file(content):
+        summary = translate(strip_html(raw_summary))
+        block = f"Dubai-News – {today}\n\n{i}. {title}\n{summary}\n{link}"
+        blocks.append(block)
+
+    return blocks
+
+def write_to_file(blocks):
     with open("news/dubai-news.txt", "w", encoding="utf-8") as f:
-        f.write(content)
+        for block in blocks:
+            f.write(block + "\n\n")
 
 def main():
     news = fetch_news()
-    formatted = format_news(news)
-    write_to_file(formatted)
+    blocks = format_news(news)
+    write_to_file(blocks)
 
 if __name__ == "__main__":
     main()
