@@ -7,10 +7,9 @@ import os
 import logging
 from openai import OpenAI
 
-# 🔐 OpenAI-Client initialisieren (ersetze durch deinen echten Key)
-client = OpenAI(api_key="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")  # <-- HIER DEIN API KEY EINTRAGEN
+# 🔐 OpenAI-Client mit modernem Interface (ab Version 1.0.0)
+client = OpenAI(api_key="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")  # ⬅️ Hier echten Key eintragen
 
-# Logging für GitHub Actions
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
