@@ -8,7 +8,6 @@ import logging
 from openai import OpenAI
 import requests
 
-# 🔐 OpenAI API-Key aus Umgebungsvariable verwenden
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 logging.basicConfig(
@@ -27,6 +26,7 @@ RSS_FEEDS = [
 MAX_ARTICLES = 3
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+BREAKING_KEYWORDS = ["breaking", "explosion", "fire", "accident", "urgent", "emergency", "critical"]
 
 class FigureRemovingParser(HTMLParser):
     def __init__(self):
@@ -85,6 +85,12 @@ def fetch_news():
     dubai_news.sort(key=lambda x: x.get("published_parsed"), reverse=True)
     return dubai_news[:MAX_ARTICLES]
 
+def filter_breaking_news(news_items):
+    return [
+        item for item in news_items
+        if any(keyword in item.title.lower() for keyword in BREAKING_KEYWORDS)
+    ]
+
 def format_news(news_items):
     today = datetime.now(pytz.timezone("Asia/Dubai")).strftime("%d. %B %Y")
 
@@ -99,7 +105,8 @@ def format_news(news_items):
         if not summary_raw and "content" in item and len(item["content"]) > 0:
             summary_raw = item["content"][0].get("value", "")
         summary = translate_text(strip_html(summary_raw))
-        block = f"Dubai-News – {today}\n\n{i}. {title}\n{summary}\n{link}"
+        prefix = "🚨 BREAKING: " if any(keyword in title.lower() for keyword in BREAKING_KEYWORDS) else f"{i}. "
+        block = f"Dubai-News – {today}\n\n{prefix}{title}\n{summary}\n{link}"
         blocks.append(block)
 
     return blocks
@@ -132,6 +139,13 @@ def send_to_telegram(blocks):
 def main():
     logging.info("🚀 Starte News-Aktualisierung")
     news = fetch_news()
+
+    if os.getenv("ONLY_BREAKING") == "true":
+        news = filter_breaking_news(news)
+        if not news:
+            logging.info("ℹ️ Keine neuen Breaking News gefunden.")
+            return
+
     blocks = format_news(news)
     write_to_file(blocks)
     send_to_telegram(blocks)
