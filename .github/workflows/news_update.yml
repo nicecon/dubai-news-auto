@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install feedparser pytz
+        run: pip install feedparser pytz deep-translator
 
       - name: Run news script
         run: python generate_news.py
