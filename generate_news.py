@@ -19,8 +19,8 @@ def translate(text, lang="de"):
         return text
 
 def strip_html(raw_html):
-    clean_text = re.sub('<figure.*?</figure>', '', raw_html, flags=re.DOTALL)  # entferne ganze <figure>-Blöcke
-    clean_text = re.sub('<[^<]+?>', '', clean_text)  # alle restlichen HTML-Tags
+    clean_text = re.sub('<figure.*?</figure>', '', raw_html, flags=re.DOTALL)  # ganze figure-Blöcke
+    clean_text = re.sub('<[^<]+?>', '', clean_text)  # alle übrigen HTML-Tags
     return clean_text.strip()
 
 def fetch_news():
