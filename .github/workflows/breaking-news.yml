@@ -1,34 +1,38 @@
-name: Check Breaking News
+name: Breaking Dubai News
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # alle 30 Minuten
+    - cron: '*/30 * * * *'  # Alle 15 Minuten prüfen
   workflow_dispatch:
 
 jobs:
   breaking-news:
     runs-on: ubuntu-latest
+
     env:
-      ONLY_BREAKING: "true"
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      ONLY_BREAKING: true
 
     steps:
-      - name: Check out repository
+      - name: 📥 Repository auschecken
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Python einrichten
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 📦 Abhängigkeiten installieren
         run: pip install feedparser pytz requests openai
 
-      - name: Run Breaking News Script
+      - name: 📰 Breaking-News-Skript ausführen
         run: python generate_news.py
 
-      - name: Debug file output
+      - name: 🗂️ Verzeichnisinhalt anzeigen (Debug)
         run: |
-          echo "✅ Listing news directory content:"
+          echo "📁 Inhalte des News-Verzeichnisses:"
           ls -lh news
-          echo "✅ File preview:"
-          head -n 20 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
+          echo "📄 Vorschau der Datei:"
+          head -n 20 news/dubai-news.txt || echo "⚠️ Datei nicht gefunden"
