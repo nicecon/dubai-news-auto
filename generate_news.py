@@ -8,7 +8,7 @@ import os
 import logging
 
 # 🔐 Direkter API-Key (nur zu Testzwecken verwenden!)
-openai.api_key = "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"  # Ersetze durch deinen echten Key
+openai.api_key = "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"  # Ersetze durch deinen echten Key
 
 # Logging konfigurieren mit Ausgabe in stdout (für GitHub Actions sichtbar)
 logging.basicConfig(
