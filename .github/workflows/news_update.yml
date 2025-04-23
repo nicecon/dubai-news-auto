@@ -19,9 +19,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install openai==0.28.1 feedparser pytz
+        run: pip install feedparser pytz openai
 
       - name: Run news script
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python generate_news.py
 
       - name: Debug file output
@@ -29,7 +31,7 @@ jobs:
           echo "✅ Listing news directory content:"
           ls -lh news
           echo "✅ File preview:"
-          head -n 40 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
+          head -n 20 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
 
       - name: Commit changes
         run: |
