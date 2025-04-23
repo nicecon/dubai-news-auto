@@ -6,6 +6,7 @@ import re
 import os
 import logging
 from openai import OpenAI
+import requests
 
 # 🔐 OpenAI API-Key aus Umgebungsvariable verwenden
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -19,10 +20,13 @@ logging.basicConfig(
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
     "https://gulfnews.com/rss?path=/uae",
-    "https://www.arabianbusiness.com/feed"
+    "https://www.arabianbusiness.com/feed",
+    "https://www.khaleejtimes.com/feed"
 ]
 
 MAX_ARTICLES = 3
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 class FigureRemovingParser(HTMLParser):
     def __init__(self):
@@ -107,13 +111,31 @@ def write_to_file(blocks):
             f.write(block + "\n\n")
         f.write(f"Generated at: {datetime.now().isoformat()}\n")
 
+def send_to_telegram(blocks):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        logging.warning("⚠️ Telegram-Token oder Chat-ID fehlen")
+        return
+
+    for block in blocks:
+        try:
+            response = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                data={"chat_id": TELEGRAM_CHAT_ID, "text": block}
+            )
+            if response.status_code == 200:
+                logging.info("📤 Gesendet an Telegram")
+            else:
+                logging.error(f"❌ Fehler beim Senden an Telegram: {response.text}")
+        except Exception as e:
+            logging.error(f"❌ Ausnahme bei Telegram-Sendung: {e}")
+
 def main():
     logging.info("🚀 Starte News-Aktualisierung")
-    print("✅ Logging aktiviert")
     news = fetch_news()
     blocks = format_news(news)
     write_to_file(blocks)
-    logging.info("✅ Datei aktualisiert.")
+    send_to_telegram(blocks)
+    logging.info("✅ Datei aktualisiert und Telegram-Benachrichtigung gesendet.")
 
 if __name__ == "__main__":
     main()
