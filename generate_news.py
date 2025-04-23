@@ -2,8 +2,9 @@ import feedparser
 from datetime import datetime
 import pytz
 from html.parser import HTMLParser
-from deep_translator import GoogleTranslator
 import re
+import openai
+import os
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
@@ -47,7 +48,14 @@ def strip_html(raw_html):
 
 def translate_text(text):
     try:
-        return refine_translation(GoogleTranslator(source='auto', target='de').translate(text))
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Übersetze den folgenden Text professionell ins Deutsche."},
+                {"role": "user", "content": text}
+            ]
+        )
+        return refine_translation(response["choices"][0]["message"]["content"].strip())
     except Exception:
         return text
 
