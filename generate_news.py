@@ -5,9 +5,13 @@ from html.parser import HTMLParser
 import re
 import openai
 import os
+import logging
 
 # 🔐 Direkter API-Key (nur zu Testzwecken verwenden!)
 openai.api_key = "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"  # Ersetze durch deinen echten Key
+
+# Logging konfigurieren
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
@@ -44,7 +48,7 @@ def strip_html(raw_html):
     return parser.get_clean_text()
 
 def translate_text(text):
-    print(f"🔁 Übersetze: {text[:60]}...")  # Debug: Zeigt den zu übersetzenden Text an
+    logging.info(f"🔁 Übersetze: {text[:80]}...")
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",
@@ -54,10 +58,10 @@ def translate_text(text):
             ]
         )
         result = response["choices"][0]["message"]["content"].strip()
-        print(f"✅ Übersetzt: {result[:60]}...")
+        logging.info(f"✅ Übersetzt: {result[:80]}...")
         return result
     except Exception as e:
-        print(f"❌ Fehler bei Übersetzung: {e}")
+        logging.error(f"❌ Fehler bei Übersetzung: {e}")
         return text
 
 def fetch_news():
@@ -101,9 +105,11 @@ def write_to_file(blocks):
         f.write(f"Generated at: {datetime.now().isoformat()}\n")
 
 def main():
+    logging.info("🚀 Starte News-Aktualisierung")
     news = fetch_news()
     blocks = format_news(news)
     write_to_file(blocks)
+    logging.info("✅ Datei aktualisiert.")
 
 if __name__ == "__main__":
     main()
