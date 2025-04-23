@@ -24,10 +24,7 @@ jobs:
       - name: Run news script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          echo "🔑 Setting OpenAI key..."
-          export OPENAI_API_KEY=$OPENAI_API_KEY
-          python generate_news.py
+        run: python generate_news.py
 
       - name: Debug file output
         run: |
