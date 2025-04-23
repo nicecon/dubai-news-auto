@@ -24,6 +24,13 @@ jobs:
       - name: Run news script
         run: python generate_news.py
 
+      - name: Debug file output
+        run: |
+          echo "✅ Listing news directory content:"
+          ls -lh news
+          echo "✅ File preview:"
+          head -n 20 news/dubai-news.txt || echo "❌ Datei nicht vorhanden"
+
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
