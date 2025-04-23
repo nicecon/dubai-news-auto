@@ -3,6 +3,7 @@ from datetime import datetime
 import pytz
 from html.parser import HTMLParser
 from deep_translator import GoogleTranslator
+import re
 
 RSS_FEEDS = [
     "https://www.thenationalnews.com/page/-/rss/dubai",
@@ -46,9 +47,18 @@ def strip_html(raw_html):
 
 def translate_text(text):
     try:
-        return GoogleTranslator(source='auto', target='de').translate(text)
+        return refine_translation(GoogleTranslator(source='auto', target='de').translate(text))
     except Exception:
         return text
+
+def refine_translation(text):
+    text = re.sub(r"\s+", " ", text)  # doppelte Leerzeichen
+    text = re.sub(r"\bAutismus -zertifizierte\b", "autismusfreundliche", text)
+    text = re.sub(r"\bKI -Konkurrenten\b", "KI-Konkurrenten", text)
+    text = re.sub(r"\bKI -Anwärter\b", "KI-Anwärter", text)
+    text = re.sub(r"\bReverse Vending Machines\b", "Rücknahmeautomaten", text)
+    text = text.replace("Mai Dubai-Branded", "Mai Dubai gebrandete")
+    return text.strip()
 
 def fetch_news():
     entries = []
