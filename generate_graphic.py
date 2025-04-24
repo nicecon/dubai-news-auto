@@ -3,7 +3,6 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from pathlib import Path
-import textwrap
 import cairosvg
 
 NEWS_FILE = "news/dubai-news.txt"
@@ -19,7 +18,7 @@ TEXT_COLOR = "white"
 
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
-# Lösche alte Bilder aus dem Output-Ordner
+# Alte Bilder löschen
 for file in Path(OUTPUT_DIR).glob("*.png"):
     file.unlink()
 
@@ -34,25 +33,34 @@ def read_news_blocks():
         if not b or b.startswith("Generated") or b.startswith("#"):
             continue
         lines = b.split("\n")
-        cleaned_lines = []
-        for line in lines:
-            line = line.strip()
-            cleaned_lines.append(line)
-        blocks.append("\n".join(cleaned_lines))
+        lines = [line.strip() for line in lines if line.strip()]
+        blocks.append(lines)
     return blocks
 
-def draw_wrapped_text(draw, text, font, start_y, max_width):
+def wrap_text(draw, text, font, max_width):
+    words = text.split()
     lines = []
-    for paragraph in text.split("\n"):
-        wrapped = textwrap.wrap(paragraph, width=40)
-        lines.extend(wrapped)
+    current_line = ""
+    for word in words:
+        test_line = f"{current_line} {word}".strip()
+        width = draw.textlength(test_line, font=font)
+        if width <= max_width:
+            current_line = test_line
+        else:
+            lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+    return lines
+
+def draw_multiline(draw, lines, font, start_y):
     y = start_y
     for line in lines:
         draw.text((PADDING, y), line, font=font, fill=TEXT_COLOR)
-        y += draw.textbbox((0, 0), line, font=font)[3] + 10
-    return y + 20
+        y += font.getbbox(line)[3] + 10
+    return y + 10
 
-def create_image(block_text, index):
+def create_image(block_lines, index):
     img = Image.new("RGB", (IMG_WIDTH, IMG_HEIGHT), BG_COLOR)
     draw = ImageDraw.Draw(img)
 
@@ -60,23 +68,21 @@ def create_image(block_text, index):
     title_font = ImageFont.truetype(FONT_BOLD, 60)
     body_font = ImageFont.truetype(FONT_LIGHT, 40)
 
-    lines = block_text.split("\n")
     y = PADDING
 
-    if lines:
-        date_line = lines[0].strip()
-        draw.text((PADDING, y), f"Dubai-News – {date_line}", font=date_font, fill=TEXT_COLOR)
-        y += draw.textbbox((0, 0), f"Dubai-News – {date_line}", font=date_font)[3] + 30
+    date_line = block_lines[0]
+    draw.text((PADDING, y), f"Dubai-News – {date_line}", font=date_font, fill=TEXT_COLOR)
+    y += date_font.getbbox(date_line)[3] + 30
 
-    if len(lines) > 1:
-        headline = lines[1].strip()
-        headline = re.sub(r"^\d+\.\s*", "", headline)  # Entferne führende Nummerierung wie "1. "
-        y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
+    if len(block_lines) > 1:
+        headline = re.sub(r"^\d+\.\s*", "", block_lines[1])
+        headline_lines = wrap_text(draw, headline, title_font, IMG_WIDTH - 2 * PADDING)
+        y = draw_multiline(draw, headline_lines, title_font, y)
 
-    for line in lines[2:]:
-        line = line.strip()
-        if line and not line.startswith("http") and not line.lower().startswith("generated at"):
-            y = draw_wrapped_text(draw, line, body_font, y, IMG_WIDTH - 2 * PADDING)
+    for line in block_lines[2:]:
+        if not line.startswith("http") and not line.lower().startswith("generated at"):
+            body_lines = wrap_text(draw, line, body_font, IMG_WIDTH - 2 * PADDING)
+            y = draw_multiline(draw, body_lines, body_font, y)
 
     png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
     cairosvg.svg2png(url=LOGO_FILE, write_to=png_logo_path, output_width=220)
