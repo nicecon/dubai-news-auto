@@ -18,7 +18,7 @@ TEXT_COLOR = "white"
 
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
-# Lösche alte Bilder aus dem Output-Ordner
+# Lösche alte Bilder
 for file in Path(OUTPUT_DIR).glob("*.png"):
     file.unlink()
 
@@ -33,11 +33,8 @@ def read_news_blocks():
         if not b or b.startswith("Generated") or b.startswith("#"):
             continue
         lines = b.split("\n")
-        cleaned_lines = []
-        for line in lines:
-            line = line.strip()
-            cleaned_lines.append(line)
-        blocks.append("\n".join(cleaned_lines))
+        cleaned = [line.strip() for line in lines if line.strip()]
+        blocks.append("\n".join(cleaned))
     return blocks
 
 def draw_wrapped_text(draw, text, font, start_y, max_width):
@@ -59,34 +56,36 @@ def create_image(block_text, index):
     title_font = ImageFont.truetype(FONT_BOLD, 60)
     body_font = ImageFont.truetype(FONT_LIGHT, 40)
 
-    lines = block_text.split("\n")
+    lines = block_text.strip().split("\n")
     y = PADDING
 
+    # Datum extrahieren
     if lines:
-        date_line = lines[0].strip()
-        draw.text((PADDING, y), f"Dubai-News – {date_line}", font=date_font, fill=TEXT_COLOR)
-        y += draw.textbbox((0, 0), f"Dubai-News – {date_line}", font=date_font)[3] + 30
+        draw.text((PADDING, y), f"Dubai-News – {lines[0]}", font=date_font, fill=TEXT_COLOR)
+        y += draw.textbbox((0, 0), f"Dubai-News – {lines[0]}", font=date_font)[3] + 30
 
+    # Headline ohne Nummerierung
     if len(lines) > 1:
         headline = lines[1].strip()
         if headline[:2].isdigit() and headline[2:3] == ".":
-            headline = headline[3:].strip()  # Remove leading number
+            headline = headline[3:].strip()
         y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
 
+    # Fließtext
     for line in lines[2:]:
-        line = line.strip()
-        if line and not line.startswith("http") and not line.lower().startswith("generated at"):
+        if not line.lower().startswith("http") and "generated at" not in line.lower():
             y = draw_wrapped_text(draw, line, body_font, y, IMG_WIDTH - 2 * PADDING)
 
-    png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
-    cairosvg.svg2png(url=LOGO_FILE, write_to=png_logo_path, output_width=220)
-    logo = Image.open(png_logo_path).convert("RGBA")
+    # Logo
+    tmp_logo = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
+    cairosvg.svg2png(url=LOGO_FILE, write_to=tmp_logo, output_width=220)
+    logo = Image.open(tmp_logo).convert("RGBA")
     img.paste(logo, (IMG_WIDTH - logo.width - 40, IMG_HEIGHT - logo.height - 40), logo)
-    os.remove(png_logo_path)
+    os.remove(tmp_logo)
 
-    output_path = os.path.join(OUTPUT_DIR, f"news_{index + 1}.png")
-    img.save(output_path)
-    print(f"✅ Grafik gespeichert: {output_path}")
+    out_path = os.path.join(OUTPUT_DIR, f"news_{index + 1}.png")
+    img.save(out_path)
+    print(f"✅ Grafik gespeichert: {out_path}")
 
 def main():
     print("📰 Lese Nachrichten aus Datei...")
