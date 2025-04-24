@@ -1,9 +1,9 @@
 name: Generate Instagram Graphics
 
 on:
-  workflow_dispatch:  # Manuell auslösbar
+  workflow_dispatch:
   schedule:
-    - cron: '15 5 * * *'  # Täglich um 9:15 Uhr Dubai-Zeit (5:15 UTC)
+    - cron: '15 5 * * *'  # Täglich um 9:15 Uhr Dubai-Zeit
 
 jobs:
   generate-graphics:
@@ -27,10 +27,10 @@ jobs:
 
       - name: 📁 Show generated files
         run: |
-          echo "✅ Inhalt des Verzeichnisses 'graphics':"
-          ls -lh graphics
+          echo "✅ Inhalt von 'graphics/':"
+          ls -lh graphics || echo "⚠️ Keine Dateien gefunden"
 
-      - name: 📬 Send images to Telegram
+      - name: 📬 Send graphics to Telegram
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -38,19 +38,21 @@ jobs:
           for file in graphics/*.png; do
             echo "📨 Sende $file an Telegram..."
             if [ -f "$file" ]; then
-              curl --fail -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendPhoto" \
-                -F chat_id="$TELEGRAM_CHAT_ID" \
+              RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto" \
+                -F chat_id="${TELEGRAM_CHAT_ID}" \
                 -F photo=@"$file" \
-                -F caption="📢 Neue Dubai-News für Instagram" || echo "❌ Fehler beim Senden von $file"
+                -F caption="📢 Neue Dubai-News für Instagram")
+              echo "➡️ Antwort von Telegram:"
+              echo "$RESPONSE"
             else
-              echo "⚠️ Datei $file nicht gefunden"
+              echo "❌ Datei $file nicht gefunden."
             fi
           done
 
-      - name: 📤 Commit and push results
+      - name: 📤 Commit und Push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add graphics/*.png
-          git commit -m "🔄 Auto-generated Instagram graphics" || echo "ℹ️ Keine Änderungen"
+          git commit -m "🔄 Auto-generierte Instagram-Bilder" || echo "ℹ️ Keine Änderungen"
           git push
