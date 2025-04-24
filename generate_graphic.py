@@ -18,6 +18,10 @@ TEXT_COLOR = "white"
 
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
+# Lösche alte Bilder aus dem Output-Ordner
+for file in Path(OUTPUT_DIR).glob("*.png"):
+    file.unlink()
+
 def read_news_blocks():
     with open(NEWS_FILE, encoding="utf-8") as f:
         content = f.read()
@@ -30,10 +34,8 @@ def read_news_blocks():
             continue
         lines = b.split("\n")
         cleaned_lines = []
-        for i, line in enumerate(lines):
+        for line in lines:
             line = line.strip()
-            if i == 1 and line[:2].isdigit() and line[2:3] == ".":
-                line = line[3:].strip()  # Remove leading number + dot + space
             cleaned_lines.append(line)
         blocks.append("\n".join(cleaned_lines))
     return blocks
