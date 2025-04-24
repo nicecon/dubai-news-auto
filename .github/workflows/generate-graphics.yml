@@ -1,35 +1,39 @@
 name: Generate Instagram Graphics
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'news/dubai-news.txt'
+  workflow_dispatch:  # Manuell auslösbar
+  schedule:
+    - cron: '15 5 * * *'  # Täglich um 9:15 Uhr Dubai-Zeit (5:15 UTC)
 
 jobs:
   generate-graphics:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
           pip install pillow cairosvg
 
-      - name: Generate news graphics
+      - name: 🖼️ Generate Instagram Graphics
         run: python generate_graphic.py
 
-      - name: Commit graphics
+      - name: 📁 Show generated files
+        run: |
+          echo "✅ Inhalt des Verzeichnisses 'graphics':"
+          ls -lh graphics
+
+      - name: 📤 Commit and push results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add graphics/
-          git commit -m "📸 Neue Instagram-Grafiken generiert" || echo "No changes"
+          git add graphics/*.png
+          git commit -m "🔄 Auto-generated Instagram graphics" || echo "ℹ️ Keine Änderungen"
           git push
