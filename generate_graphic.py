@@ -38,11 +38,11 @@ def create_image(block_text, index):
     for i, line in enumerate(lines):
         if i == 0:
             draw.text((PADDING, y), line, font=title_font, fill="black")
-            y += title_font.getsize(line)[1] + 30
+            y += draw.textbbox((0, 0), line, font=title_font)[3] + 30
         elif line.strip():
             for wrapped_line in textwrap.wrap(line, width=60):
                 draw.text((PADDING, y), wrapped_line, font=body_font, fill="black")
-                y += body_font.getsize(wrapped_line)[1] + 10
+                y += draw.textbbox((0, 0), wrapped_line, font=body_font)[3] + 10
             y += 20
 
     # Convert and paste SVG logo
