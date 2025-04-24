@@ -13,7 +13,7 @@ FONT_LIGHT = "fonts/Montserrat-Light.ttf"
 IMG_WIDTH = 1080
 IMG_HEIGHT = 1080
 PADDING = 80
-BG_COLOR = "#ede7dd"
+BG_COLOR = "#465456"
 
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
