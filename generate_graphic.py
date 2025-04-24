@@ -1,4 +1,5 @@
 import os
+import re
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from pathlib import Path
@@ -69,8 +70,7 @@ def create_image(block_text, index):
 
     if len(lines) > 1:
         headline = lines[1].strip()
-        if len(headline) > 2 and headline[0].isdigit() and headline[1] == ".":
-            headline = headline[2:].strip()  # Entferne Nummerierung "1."
+        headline = re.sub(r"^\d+\.\s*", "", headline)  # Entferne führende Nummerierung wie "1. "
         y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
 
     for line in lines[2:]:
