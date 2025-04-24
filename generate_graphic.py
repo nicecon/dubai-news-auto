@@ -14,6 +14,7 @@ IMG_WIDTH = 1080
 IMG_HEIGHT = 1080
 PADDING = 80
 BG_COLOR = "#465456"
+TEXT_COLOR = "white"
 
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
@@ -22,26 +23,35 @@ def read_news_blocks():
         content = f.read()
 
     raw_blocks = content.split("Dubai-News – ")
-    blocks = ["Dubai-News – " + b.strip() for b in raw_blocks if b.strip() and not b.startswith("Generated")]
+    blocks = [b.strip() for b in raw_blocks if b.strip() and not b.startswith("Generated") and not b.startswith("#")]
     return blocks
 
 def create_image(block_text, index):
     img = Image.new("RGB", (IMG_WIDTH, IMG_HEIGHT), BG_COLOR)
     draw = ImageDraw.Draw(img)
 
+    date_font = ImageFont.truetype(FONT_LIGHT, 20)
     title_font = ImageFont.truetype(FONT_BOLD, 60)
     body_font = ImageFont.truetype(FONT_LIGHT, 40)
 
     lines = block_text.split("\n")
     y = PADDING
 
-    for i, line in enumerate(lines):
-        if i == 0:
-            draw.text((PADDING, y), line, font=title_font, fill="black")
-            y += draw.textbbox((0, 0), line, font=title_font)[3] + 30
-        elif line.strip():
-            for wrapped_line in textwrap.wrap(line, width=60):
-                draw.text((PADDING, y), wrapped_line, font=body_font, fill="black")
+    if lines:
+        # Draw small date line
+        draw.text((PADDING, y), f"Dubai-News – {lines[0].strip()}", font=date_font, fill=TEXT_COLOR)
+        y += draw.textbbox((0, 0), lines[0], font=date_font)[3] + 30
+
+    if len(lines) > 1:
+        # Draw headline
+        draw.text((PADDING, y), lines[1], font=title_font, fill=TEXT_COLOR)
+        y += draw.textbbox((0, 0), lines[1], font=title_font)[3] + 30
+
+    # Draw remaining body text
+    for line in lines[2:]:
+        if line.strip() and not line.startswith("http"):
+            for wrapped_line in textwrap.wrap(line, width=50):
+                draw.text((PADDING, y), wrapped_line, font=body_font, fill=TEXT_COLOR)
                 y += draw.textbbox((0, 0), wrapped_line, font=body_font)[3] + 10
             y += 20
 
