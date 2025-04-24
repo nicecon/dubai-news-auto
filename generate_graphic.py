@@ -1,62 +1,66 @@
-from PIL import Image, ImageDraw, ImageFont
-import cairosvg
-from io import BytesIO
 import os
+from PIL import Image, ImageDraw, ImageFont
+from datetime import datetime
+from pathlib import Path
+import textwrap
+import cairosvg
 
-# Konfiguration
-WIDTH, HEIGHT = 1080, 1080
-BACKGROUND_COLOR = "#465456"
-TITLE_FONT_PATH = "fonts/Montserrat-SemiBold.ttf"
-TEXT_FONT_PATH = "fonts/Montserrat-Light.ttf"
-LOGO_PATH = "logo.svg"
-OUTPUT_PATH = "graphics/news_post.png"
+NEWS_FILE = "news/dubai-news.txt"
+LOGO_FILE = "logo.svg"
+OUTPUT_DIR = "graphics"
+FONT_BOLD = "Montserrat-SemiBold.ttf"
+FONT_LIGHT = "Montserrat-Light.ttf"
+IMG_WIDTH = 1080
+IMG_HEIGHT = 1080
+PADDING = 80
+BG_COLOR = "#ede7dd"
 
-def render_svg_to_pil(svg_path, width):
-    png_data = cairosvg.svg2png(url=svg_path, output_width=width)
-    return Image.open(BytesIO(png_data)).convert("RGBA")
+Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
-def create_graphic(title, text):
-    # Hintergrund erstellen
-    image = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND_COLOR)
-    draw = ImageDraw.Draw(image)
+def read_news_blocks():
+    with open(NEWS_FILE, encoding="utf-8") as f:
+        content = f.read()
 
-    # Logo
-    logo = render_svg_to_pil(LOGO_PATH, width=200)
-    image.paste(logo, (40, 40), mask=logo)
+    raw_blocks = content.split("Dubai-News – ")
+    blocks = ["Dubai-News – " + b.strip() for b in raw_blocks if b.strip() and not b.startswith("Generated")]
+    return blocks
 
-    # Fonts laden
-    title_font = ImageFont.truetype(TITLE_FONT_PATH, 60)
-    text_font = ImageFont.truetype(TEXT_FONT_PATH, 36)
+def create_image(block_text, index):
+    img = Image.new("RGB", (IMG_WIDTH, IMG_HEIGHT), BG_COLOR)
+    draw = ImageDraw.Draw(img)
 
-    # Titel
-    draw.text((40, 280), title, font=title_font, fill="black")
+    title_font = ImageFont.truetype(FONT_BOLD, 60)
+    body_font = ImageFont.truetype(FONT_LIGHT, 40)
 
-    # Text (mehrzeilig automatisch umbrechen)
-    def draw_multiline(draw, text, font, x, y, max_width, line_spacing):
-        lines = []
-        words = text.split()
-        line = ""
-        for word in words:
-            test_line = f"{line} {word}".strip()
-            if draw.textlength(test_line, font=font) <= max_width:
-                line = test_line
-            else:
-                lines.append(line)
-                line = word
-        lines.append(line)
-        for i, l in enumerate(lines):
-            draw.text((x, y + i * line_spacing), l, font=font, fill="black")
+    lines = block_text.split("\n")
+    y = PADDING
 
-    draw_multiline(draw, text, text_font, x=40, y=380, max_width=1000, line_spacing=48)
+    for i, line in enumerate(lines):
+        if i == 0:
+            draw.text((PADDING, y), line, font=title_font, fill="black")
+            y += title_font.getsize(line)[1] + 30
+        elif line.strip():
+            for wrapped_line in textwrap.wrap(line, width=60):
+                draw.text((PADDING, y), wrapped_line, font=body_font, fill="black")
+                y += body_font.getsize(wrapped_line)[1] + 10
+            y += 20
 
-    # Speichern
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    image.save(OUTPUT_PATH)
-    print(f"✅ Grafik gespeichert unter {OUTPUT_PATH}")
+    # Convert and paste SVG logo
+    png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
+    cairosvg.svg2png(url=LOGO_FILE, write_to=png_logo_path, output_width=220)
+    logo = Image.open(png_logo_path).convert("RGBA")
+    img.paste(logo, (IMG_WIDTH - logo.width - 40, IMG_HEIGHT - logo.height - 40), logo)
+    os.remove(png_logo_path)
 
-# Beispielausführung
+    output_path = os.path.join(OUTPUT_DIR, f"news_{index + 1}.png")
+    img.save(output_path)
+    print(f"✅ Grafik gespeichert: {output_path}")
+
+def main():
+    print("📰 Lese Nachrichten aus Datei...")
+    blocks = read_news_blocks()
+    for i, block in enumerate(blocks):
+        create_image(block, i)
+
 if __name__ == "__main__":
-    create_graphic(
-        title="BREAKING: Emirates erhält Autismus-Zertifizierung",
-        text="Die Fluggesellschaft Emirates wurde als weltweit erste Airline für Autismusfreundlichkeit zertifiziert."
-    )
+    main()
