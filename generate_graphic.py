@@ -29,15 +29,20 @@ def read_news_blocks():
         if not b or b.startswith("Generated") or b.startswith("#"):
             continue
         lines = b.split("\n")
-        if len(lines) > 1 and lines[1][:2].isdigit() and lines[1][2:3] == ".":
-            lines[1] = lines[1][3:].strip()
-        blocks.append("\n".join(lines))
+        cleaned_lines = []
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if i == 1 and line[:2].isdigit() and line[2:3] == ".":
+                line = line[3:].strip()  # Remove leading number + dot + space
+            cleaned_lines.append(line)
+        blocks.append("\n".join(cleaned_lines))
     return blocks
 
 def draw_wrapped_text(draw, text, font, start_y, max_width):
     lines = []
     for paragraph in text.split("\n"):
-        lines += textwrap.wrap(paragraph, width=40)
+        wrapped = textwrap.wrap(paragraph, width=40)
+        lines.extend(wrapped)
     y = start_y
     for line in lines:
         draw.text((PADDING, y), line, font=font, fill=TEXT_COLOR)
@@ -62,6 +67,8 @@ def create_image(block_text, index):
 
     if len(lines) > 1:
         headline = lines[1].strip()
+        if headline[:2].isdigit() and headline[2:3] == ".":
+            headline = headline[3:].strip()  # Remove leading number
         y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
 
     for line in lines[2:]:
