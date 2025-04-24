@@ -23,7 +23,15 @@ def read_news_blocks():
         content = f.read()
 
     raw_blocks = content.split("Dubai-News – ")
-    blocks = [b.strip() for b in raw_blocks if b.strip() and not b.startswith("Generated") and not b.startswith("#")]
+    blocks = []
+    for b in raw_blocks:
+        b = b.strip()
+        if not b or b.startswith("Generated") or b.startswith("#"):
+            continue
+        lines = b.split("\n")
+        if len(lines) > 1 and lines[1][:2].isdigit() and lines[1][2:3] == ".":
+            lines[1] = lines[1][3:].strip()
+        blocks.append("\n".join(lines))
     return blocks
 
 def draw_wrapped_text(draw, text, font, start_y, max_width):
@@ -50,17 +58,15 @@ def create_image(block_text, index):
     if lines:
         date_line = lines[0].strip()
         draw.text((PADDING, y), f"Dubai-News – {date_line}", font=date_font, fill=TEXT_COLOR)
-        y += draw.textbbox((0, 0), date_line, font=date_font)[3] + 30
+        y += draw.textbbox((0, 0), f"Dubai-News – {date_line}", font=date_font)[3] + 30
 
     if len(lines) > 1:
         headline = lines[1].strip()
-        if len(headline) >= 2 and headline[0].isdigit() and headline[1] == ".":
-            headline = headline[2:].strip()
         y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
 
     for line in lines[2:]:
         line = line.strip()
-        if line and not line.startswith("http") and not line.startswith("Generated at"):
+        if line and not line.startswith("http") and not line.lower().startswith("generated at"):
             y = draw_wrapped_text(draw, line, body_font, y, IMG_WIDTH - 2 * PADDING)
 
     png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
