@@ -15,6 +15,9 @@ IMG_HEIGHT = 1080
 PADDING = 80
 BG_COLOR = "#465456"
 TEXT_COLOR = "white"
+LINK_TEXT = "Telegram: @deutsche_in_dubai"
+LINK_FONT_SIZE = 25
+LINE_SPACING = 15  # Einheitlicher Zeilenabstand
 
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
@@ -61,8 +64,8 @@ def draw_wrapped_text(draw, text, font, start_y, max_width):
     y = start_y
     for line in wrap_text(draw, text, font, max_width):
         draw.text((PADDING, y), line, font=font, fill=TEXT_COLOR)
-        y += draw.textbbox((0, 0), line, font=font)[3] + 10
-    return y + 20
+        y += draw.textbbox((0, 0), line, font=font)[3] + LINE_SPACING
+    return y + LINE_SPACING
 
 def create_image(date_line, headline, summary_text, index):
     img = Image.new("RGB", (IMG_WIDTH, IMG_HEIGHT), BG_COLOR)
@@ -71,14 +74,21 @@ def create_image(date_line, headline, summary_text, index):
     date_font = ImageFont.truetype(FONT_LIGHT, 20)
     title_font = ImageFont.truetype(FONT_BOLD, 60)
     body_font = ImageFont.truetype(FONT_LIGHT, 40)
+    link_font = ImageFont.truetype(FONT_LIGHT, LINK_FONT_SIZE)
 
     y = PADDING
     draw.text((PADDING, y), f"Dubai-News – {date_line}", font=date_font, fill=TEXT_COLOR)
     y += draw.textbbox((0, 0), f"Dubai-News – {date_line}", font=date_font)[3] + 30
 
     y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
+    y += 20  # Abstand zwischen Headline und Fließtext
     y = draw_wrapped_text(draw, summary_text, body_font, y, IMG_WIDTH - 2 * PADDING)
 
+    # Telegram-Link
+    link_y = IMG_HEIGHT - 80
+    draw.text((PADDING, link_y), LINK_TEXT, font=link_font, fill=TEXT_COLOR)
+
+    # Logo
     png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
     cairosvg.svg2png(url=LOGO_FILE, write_to=png_logo_path, output_width=220)
     logo = Image.open(png_logo_path).convert("RGBA")
