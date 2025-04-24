@@ -8,8 +8,8 @@ import cairosvg
 NEWS_FILE = "news/dubai-news.txt"
 LOGO_FILE = "logo.svg"
 OUTPUT_DIR = "graphics"
-FONT_BOLD = "Montserrat-SemiBold.ttf"
-FONT_LIGHT = "Montserrat-Light.ttf"
+FONT_BOLD = "fonts/Montserrat-SemiBold.ttf"
+FONT_LIGHT = "fonts/Montserrat-Light.ttf"
 IMG_WIDTH = 1080
 IMG_HEIGHT = 1080
 PADDING = 80
