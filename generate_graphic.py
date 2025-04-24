@@ -5,7 +5,7 @@ import os
 
 # Konfiguration
 WIDTH, HEIGHT = 1080, 1080
-BACKGROUND_COLOR = "#dfddd8"
+BACKGROUND_COLOR = "#465456"
 TITLE_FONT_PATH = "fonts/Montserrat-SemiBold.ttf"
 TEXT_FONT_PATH = "fonts/Montserrat-Light.ttf"
 LOGO_PATH = "logo.svg"
