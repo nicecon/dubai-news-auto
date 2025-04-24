@@ -1,0 +1,35 @@
+name: Generate Instagram Graphics
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'news/dubai-news.txt'
+
+jobs:
+  generate-graphics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pillow cairosvg
+
+      - name: Generate news graphics
+        run: python generate_graphic.py
+
+      - name: Commit graphics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add graphics/
+          git commit -m "📸 Neue Instagram-Grafiken generiert" || echo "No changes"
+          git push
