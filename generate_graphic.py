@@ -26,8 +26,10 @@ def read_news_blocks():
     blocks = [b.strip() for b in raw_blocks if b.strip() and not b.startswith("Generated") and not b.startswith("#")]
     return blocks
 
-def draw_wrapped_text(draw, text, font, start_y):
-    lines = textwrap.wrap(text, width=42)
+def draw_wrapped_text(draw, text, font, start_y, max_width):
+    lines = []
+    for paragraph in text.split("\n"):
+        lines += textwrap.wrap(paragraph, width=40)
     y = start_y
     for line in lines:
         draw.text((PADDING, y), line, font=font, fill=TEXT_COLOR)
@@ -54,11 +56,11 @@ def create_image(block_text, index):
         headline = lines[1].strip()
         if len(headline) >= 2 and headline[0].isdigit() and headline[1] == ".":
             headline = headline[2:].strip()
-        y = draw_wrapped_text(draw, headline, title_font, y)
+        y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
 
     for line in lines[2:]:
         if line.strip() and not line.startswith("http"):
-            y = draw_wrapped_text(draw, line, body_font, y)
+            y = draw_wrapped_text(draw, line, body_font, y, IMG_WIDTH - 2 * PADDING)
 
     png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
     cairosvg.svg2png(url=LOGO_FILE, write_to=png_logo_path, output_width=220)
