@@ -59,7 +59,8 @@ def create_image(block_text, index):
         y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
 
     for line in lines[2:]:
-        if line.strip() and not line.startswith("http"):
+        line = line.strip()
+        if line and not line.startswith("http") and not line.startswith("Generated at"):
             y = draw_wrapped_text(draw, line, body_font, y, IMG_WIDTH - 2 * PADDING)
 
     png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
