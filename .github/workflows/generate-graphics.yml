@@ -20,7 +20,7 @@ jobs:
 
       - name: 📦 Install dependencies
         run: |
-          pip install pillow cairosvg
+          pip install pillow cairosvg requests
 
       - name: 🖼️ Generate Instagram Graphics
         run: python generate_graphic.py
@@ -37,3 +37,16 @@ jobs:
           git add graphics/*.png
           git commit -m "🔄 Auto-generated Instagram graphics" || echo "ℹ️ Keine Änderungen"
           git push
+
+      - name: 📬 Send images to Telegram
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          for file in graphics/*.png; do
+            echo "📨 Sende $file an Telegram..."
+            curl -s -X POST https://api.telegram.org/bot$TELEGRAM_TOKEN/sendPhoto \
+              -F chat_id=$TELEGRAM_CHAT_ID \
+              -F photo=@"$file" \
+              -F caption="📰 Neue Nachricht aus Dubai"
+          done
