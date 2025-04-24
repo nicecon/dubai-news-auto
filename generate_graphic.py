@@ -21,18 +21,13 @@ Path(OUTPUT_DIR).mkdir(exist_ok=True)
 def read_news_blocks():
     with open(NEWS_FILE, encoding="utf-8") as f:
         content = f.read()
+
     raw_blocks = content.split("Dubai-News – ")
-    blocks = [
-        b.strip()
-        for b in raw_blocks
-        if b.strip() and not b.startswith("Generated") and not b.startswith("#")
-    ]
+    blocks = [b.strip() for b in raw_blocks if b.strip() and not b.startswith("Generated") and not b.startswith("#")]
     return blocks
 
-def draw_wrapped_text(draw, text, font, start_y, max_width):
-    lines = []
-    for paragraph in text.split("\n"):
-        lines.extend(textwrap.wrap(paragraph, width=50))
+def draw_wrapped_text(draw, text, font, start_y):
+    lines = textwrap.wrap(text, width=42)
     y = start_y
     for line in lines:
         draw.text((PADDING, y), line, font=font, fill=TEXT_COLOR)
@@ -50,32 +45,27 @@ def create_image(block_text, index):
     lines = block_text.split("\n")
     y = PADDING
 
-    # Datum extrahieren
     if lines:
         date_line = lines[0].strip()
         draw.text((PADDING, y), f"Dubai-News – {date_line}", font=date_font, fill=TEXT_COLOR)
         y += draw.textbbox((0, 0), date_line, font=date_font)[3] + 30
 
-    # Headline formatieren
     if len(lines) > 1:
         headline = lines[1].strip()
-        if headline[0].isdigit() and headline[1] == ".":
+        if len(headline) >= 2 and headline[0].isdigit() and headline[1] == ".":
             headline = headline[2:].strip()
-        y = draw_wrapped_text(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING)
+        y = draw_wrapped_text(draw, headline, title_font, y)
 
-    # Restlicher Text (ohne URLs)
     for line in lines[2:]:
         if line.strip() and not line.startswith("http"):
-            y = draw_wrapped_text(draw, line.strip(), body_font, y, IMG_WIDTH - 2 * PADDING)
+            y = draw_wrapped_text(draw, line, body_font, y)
 
-    # Logo einfügen
     png_logo_path = os.path.join(OUTPUT_DIR, f"logo_tmp_{index}.png")
     cairosvg.svg2png(url=LOGO_FILE, write_to=png_logo_path, output_width=220)
     logo = Image.open(png_logo_path).convert("RGBA")
     img.paste(logo, (IMG_WIDTH - logo.width - 40, IMG_HEIGHT - logo.height - 40), logo)
     os.remove(png_logo_path)
 
-    # Speichern
     output_path = os.path.join(OUTPUT_DIR, f"news_{index + 1}.png")
     img.save(output_path)
     print(f"✅ Grafik gespeichert: {output_path}")
