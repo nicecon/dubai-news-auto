@@ -1,9 +1,10 @@
-name: Update Dubai Real Estate News
+name: Update Dubai Property Projects
 
 on:
   schedule:
     - cron: '0 5 * * *'    # 09:00 Dubai-Zeit
-    - cron: '0 14 * * *'   # 18:00 Dubai-Zeit
+    - cron: '0 9 * * *'    # 13:00 Dubai-Zeit
+
   workflow_dispatch:
 
 jobs:
@@ -28,6 +29,12 @@ jobs:
         run: |
           pip install feedparser pytz openai requests beautifulsoup4
 
+      # Optional - Install Playwright (falls du später erweitern willst)
+      - name: Install Playwright (optional)
+        run: |
+          pip install playwright
+          playwright install chromium
+
       - name: Run real estate update script
         run: python update_realestate.py
 
@@ -43,5 +50,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add news/dubai-neubauprojekte-news.txt
-          git commit -m "Daily Dubai Real Estate News Update" || echo "No changes to commit"
+          git commit -m "Daily Dubai Property Projects Update" || echo "No changes to commit"
           git push
