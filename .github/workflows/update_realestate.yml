@@ -3,7 +3,6 @@ name: Update Dubai Property Projects
 on:
   schedule:
     - cron: '0 5 * * *'    # 09:00 Dubai-Zeit
-    - cron: '0 9 * * *'    # 13:00 Dubai-Zeit
   workflow_dispatch:
 
 jobs:
@@ -28,9 +27,6 @@ jobs:
         run: |
           pip install feedparser pytz openai requests beautifulsoup4 playwright
           playwright install chromium
-
-      - name: Run Playwright Bayut Scraper
-        run: python bayut_scraper.py
 
       - name: Run Real Estate News Scraper
         run: python update_realestate.py
