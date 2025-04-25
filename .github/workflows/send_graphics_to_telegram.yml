@@ -1,12 +1,12 @@
-name: 📤 Sende Instagram-Bilder an Telegram
+name: 📤 Sende Instagram-Grafiken an Telegram
 
 on:
   schedule:
-    - cron: '25 5 * * *'  # Täglich um 09:25 Uhr Dubai-Zeit (UTC+4 → 05:25 UTC)
+    - cron: '25 5 * * *'  # Täglich um 09:25 Uhr Dubai-Zeit (UTC+4)
   workflow_dispatch:
 
 jobs:
-  send-graphics-to-telegram:
+  send-graphics:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,8 +30,8 @@ jobs:
               echo "📝 Dateityp: $file_info"
 
               response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
-                -F "chat_id=${TELEGRAM_CHAT_ID}" \
-                -F "photo=@$file;type=image/png")
+                -F chat_id="${TELEGRAM_CHAT_ID}" \
+                -F photo=@"$file")
 
               echo "📦 Antwort: $response"
 
