@@ -29,7 +29,8 @@ PROJECT_KEYWORDS = [
     "new project", "new development", "launched", "launch", "off-plan", 
     "master development", "under construction", "breaking ground", 
     "phase one", "groundbreaking", "handover", "luxury tower", 
-    "community launch", "first phase unveiled"
+    "community launch", "first phase unveiled", "ready projects", 
+    "upcoming projects", "project pipeline", "new communities"
 ]
 
 MAX_ARTICLES = 5
@@ -79,18 +80,22 @@ def translate_text(text):
         logging.error(f"❌ Fehler bei Übersetzung: {e}")
         return text
 
+def matches_keywords(entry):
+    text = ' '.join([
+        entry.get("title", ""),
+        entry.get("description", ""),
+        entry.get("summary", ""),
+        ' '.join([c.get("value", "") for c in entry.get("content", [])]) if "content" in entry else ""
+    ]).lower()
+    return any(keyword in text for keyword in PROJECT_KEYWORDS)
+
 def fetch_project_news():
     entries = []
     for url in RSS_FEEDS:
         feed = feedparser.parse(url)
         entries.extend(feed.entries)
 
-    project_news = [
-        entry for entry in entries
-        if any(keyword in entry.title.lower() for keyword in PROJECT_KEYWORDS)
-           or any(keyword in entry.get("description", "").lower() for keyword in PROJECT_KEYWORDS)
-    ]
-
+    project_news = [entry for entry in entries if matches_keywords(entry)]
     project_news.sort(key=lambda x: x.get("published_parsed"), reverse=True)
     return project_news[:MAX_ARTICLES]
 
