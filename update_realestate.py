@@ -27,7 +27,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 PROJECT_KEYWORDS = [
-    "launch", "dubai", "new", "development", "off-plan",
+    "launch", "new", "development", "off-plan",
     "residential", "project", "announces", "coming soon"
 ]
 
@@ -50,19 +50,6 @@ def summarize_short(text):
         return text
 
 
-def is_recent(text):
-    matches = DATE_PATTERN.findall(text)
-    for match in matches:
-        for fmt in ("%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%y", "%d/%m/%y", "%d-%m-%y"):
-            try:
-                parsed_date = datetime.strptime(match, fmt)
-                if parsed_date > DATE_LIMIT:
-                    return True
-            except Exception:
-                continue
-    return True
-
-
 def fetch_project_news():
     articles = []
     for url in TARGET_URLS:
@@ -75,9 +62,7 @@ def fetch_project_news():
                 href = tag["href"]
                 if not href.startswith("http"):
                     href = url.rstrip("/") + "/" + href.lstrip("/")
-                if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS) and "dubai" in text.lower():
-                    if not any(x in href.lower() for x in ["/project/", "/developments/", "/residences/"]):
-                        continue
+                if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS):
                     try:
                         check = requests.head(href, timeout=10)
                         if check.status_code == 200:
