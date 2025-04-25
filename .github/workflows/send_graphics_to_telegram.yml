@@ -1,57 +1,38 @@
-name: 📤 Send Instagram Graphics to Telegram
+name: 📤 Grafiken automatisch an Telegram senden
 
 on:
-  workflow_dispatch:  # Manuell auslösbar
   schedule:
-    - cron: '30 5 * * *'  # Täglich um 09:30 Uhr Dubai-Zeit (5:30 UTC)
+    - cron: '25 5 * * *'  # Täglich um 09:25 Dubai-Zeit (UTC+4)
+  workflow_dispatch:      # Optional manuell auslösbar
 
 jobs:
-  send-graphics:
+  send-to-telegram:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repository
+      - name: 📥 Repository auschecken
         uses: actions/checkout@v3
 
-      - name: 🐍 Python einrichten
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: 📦 Abhängigkeiten installieren
-        run: |
-          pip install pillow cairosvg
-
-      - name: 🖼️ Bilder generieren
-        run: python generate_graphic.py
-
-      - name: 📤 Bilder an Telegram senden
+      - name: 📤 Sende PNGs aus graphics/ an Telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          GRAPHICS_DIR="${GITHUB_WORKSPACE}/graphics"
-          
-          echo "📂 Sende alle Bilder aus $GRAPHICS_DIR an Telegram..."
+          echo "📂 Durchsuche Ordner 'graphics/' nach PNG-Dateien..."
 
-          for file in "$GRAPHICS_DIR"/*.png; do
-            if [ -f "$file" ]; then
-              echo "📨 Sende $file an Telegram..."
-
-              response=$(curl -s -w "%{http_code}" -o response.json -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
+          for file in graphics/*.png; do
+            if [[ -f "$file" ]]; then
+              echo "📨 Sende $file ..."
+              response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
                 -F chat_id="${TELEGRAM_CHAT_ID}" \
                 -F photo=@"$file")
 
-              echo "📦 HTTP-Code: $response"
-              echo "📝 Telegram Antwort:"
-              cat response.json
-
-              if grep -q '"ok":true' response.json; then
+              if echo "$response" | grep -q '"ok":true'; then
                 echo "✅ Erfolgreich gesendet: $file"
               else
                 echo "❌ Fehler beim Senden von $file"
+                echo "📦 Antwort: $response"
               fi
-              echo ""
             else
               echo "⚠️ Datei nicht gefunden: $file"
             fi
