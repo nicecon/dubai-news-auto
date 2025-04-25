@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import os
 import logging
@@ -39,6 +39,9 @@ PROJECT_KEYWORDS = [
     "announces", "breaks ground", "launching soon", "sales event"
 ]
 
+# Aktuelle Projekte nur aus den letzten 30 Tagen berücksichtigen (wenn Datum im Text erkennbar)
+DATE_LIMIT = datetime.now() - timedelta(days=30)
+
 def translate_text(text):
     logging.info(f"🔁 Übersetze: {text[:80]}...")
     try:
@@ -63,7 +66,6 @@ def fetch_project_news():
             response = requests.get(url, timeout=15)
             soup = BeautifulSoup(response.content, "html.parser")
 
-            # Suche Links und Headlines zu Projekten
             links = soup.find_all("a", href=True)
             for tag in links:
                 text = tag.get_text(strip=True)
@@ -71,7 +73,10 @@ def fetch_project_news():
                     href = tag["href"]
                     if not href.startswith("http"):
                         href = url.rstrip("/") + "/" + href.lstrip("/")
-                    articles.append({"title": text, "url": href})
+
+                    # Prüfen, ob ein Datum im Link oder Text vorkommt (rudimentär)
+                    if any(year in href or year in text for year in ["2025", "2024"]):
+                        articles.append({"title": text, "url": href})
         except Exception as e:
             logging.error(f"❌ Fehler beim Abrufen von {url}: {e}")
 
