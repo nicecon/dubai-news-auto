@@ -1,28 +1,27 @@
-name: Sende Instagram-Grafiken an Telegram
+name: Send Instagram Graphics to Telegram
 
 on:
-  workflow_dispatch:  # Manuelles Auslösen
+  workflow_dispatch:
   schedule:
-    - cron: '30 5 * * *'  # Täglich um 9:30 Uhr Dubai-Zeit (5:30 UTC)
+    - cron: '20 5 * * *'  # Täglich um 9:20 Uhr Dubai-Zeit (5:20 UTC)
 
 jobs:
-  send-graphics:
+  send-to-telegram:
     runs-on: ubuntu-latest
 
-    env:
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
     steps:
-      - name: 📥 Repository auschecken
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v3
 
-      - name: 🖼️ Sende Grafiken an Telegram
+      - name: 📤 Send Graphics to Telegram
         run: |
           for file in graphics/*.png; do
             echo "📨 Sende $file an Telegram..."
-            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto" \
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
               -F chat_id="${TELEGRAM_CHAT_ID}" \
               -F photo=@"$file" \
               || echo "❌ Fehler beim Senden von $file"
           done
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
