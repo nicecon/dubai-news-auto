@@ -29,32 +29,30 @@ MAX_ARTICLES = 4
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# Keywords für Neubauprojekte
 PROJECT_KEYWORDS = [
     "launch", "dubai", "new", "development", "off-plan",
     "residential", "project", "announces", "coming soon"
 ]
 
-# Nur Artikel mit Datum innerhalb der letzten 30 Tage
 DATE_LIMIT = datetime.now() - timedelta(days=30)
 DATE_PATTERN = re.compile(r'(\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4})')
 
 
 def translate_text(text):
-    logging.info(f"🔁 Übersetze: {text[:80]}...")
+    logging.info(f"🔁 Erstelle kurze Zusammenfassung für: {text[:80]}...")
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Du bist ein professioneller deutscher Immobilienredakteur. Schreibe kurze, elegante Zusammenfassungen von Immobilienprojekten."},
-                {"role": "user", "content": f"Schreibe eine elegante deutsche Kurzbeschreibung für dieses Immobilienprojekt in Dubai: {text}"}
+                {"role": "system", "content": "Du bist ein professioneller deutscher Immobilienredakteur. Erstelle elegante, präzise Kurzbeschreibungen für Immobilienprojekte in Dubai."},
+                {"role": "user", "content": f"Fasse dieses Neubauprojekt in Dubai elegant zusammen: {text}"}
             ]
         )
         result = response.choices[0].message.content.strip()
-        logging.info(f"✅ Zusammenfassung: {result[:80]}...")
+        logging.info(f"✅ Zusammenfassung erstellt: {result[:80]}...")
         return result
     except Exception as e:
-        logging.error(f"❌ Fehler bei Übersetzung: {e}")
+        logging.error(f"❌ Fehler bei Zusammenfassung: {e}")
         return text
 
 
@@ -77,7 +75,6 @@ def fetch_project_news():
         try:
             response = requests.get(url, timeout=15)
             soup = BeautifulSoup(response.content, "html.parser")
-
             links = soup.find_all("a", href=True)
             for tag in links:
                 text = tag.get_text(strip=True)
@@ -85,15 +82,39 @@ def fetch_project_news():
                 if ("dubai" in text.lower() and any(keyword in text.lower() for keyword in PROJECT_KEYWORDS)):
                     if not href.startswith("http"):
                         href = url.rstrip("/") + "/" + href.lstrip("/")
-                    if "/project/" not in href.lower() and "/developments/" not in href.lower():
+                    if not any(x in href.lower() for x in ["/project/", "/developments/", "/residences/"]):
                         continue
                     if "404" in href.lower():
                         continue
-                    articles.append({"title": text, "url": href})
+
+                    # Hole Projektdetailseite
+                    try:
+                        proj_resp = requests.get(href, timeout=10)
+                        proj_soup = BeautifulSoup(proj_resp.content, "html.parser")
+                        image = proj_soup.find("img")
+                        image_url = image["src"] if image and "src" in image.attrs else ""
+                        location = ""
+                        price = ""
+
+                        # Standort & Preis extrahieren
+                        for tag_text in proj_soup.stripped_strings:
+                            if "location" in tag_text.lower():
+                                location = tag_text
+                            if any(p in tag_text.lower() for p in ["aed", "price", "from"]):
+                                price = tag_text
+
+                        articles.append({
+                            "title": text,
+                            "url": href,
+                            "image": image_url,
+                            "location": location,
+                            "price": price
+                        })
+                    except Exception as e:
+                        logging.warning(f"⚠️ Detailseite nicht ladbar: {href}")
         except Exception as e:
             logging.error(f"❌ Fehler beim Abrufen von {url}: {e}")
 
-    # Duplikate entfernen
     seen = set()
     unique_articles = []
     for article in articles:
@@ -106,14 +127,25 @@ def fetch_project_news():
 
 def format_news(news_items):
     if not news_items:
-        return ["🏗️ Aktuelle Neubauprojekte in Dubai:\n\nKeine aktuellen Projektankündigungen verfügbar."]
+        return ["Aktuelle Neubauprojekte in Dubai:\n\nKeine aktuellen Projektankündigungen verfügbar."]
 
-    blocks = ["🏗️ Aktuelle Neubauprojekte in Dubai:\n"]
+    blocks = []
     for item in news_items:
-        title = item["title"]
+        title = item["title"].strip()
         description = translate_text(title)
         link = item["url"]
-        block = f"🏢 **{title}**\n{description}\n🔗 [Zum Projekt]({link})\n"
+        image = item.get("image", "")
+        location = item.get("location", "")
+        price = item.get("price", "")
+
+        block = f"**{title}**\n"
+        if image:
+            block += f"![Projektbild]({image})\n"
+        if location:
+            block += f"📍 {location}\n"
+        if price:
+            block += f"💰 {price}\n"
+        block += f"{description}\n[Zum Projekt]({link})"
         blocks.append(block)
 
     return blocks
@@ -133,18 +165,18 @@ def send_to_telegram(blocks):
         logging.warning("⚠️ Telegram-Token oder Chat-ID fehlen")
         return
 
-    message = "\n".join(blocks)
-    try:
-        response = requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-            data={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
-        )
-        if response.status_code == 200:
-            logging.info("📤 Erfolgreich an Telegram gesendet")
-        else:
-            logging.error(f"❌ Fehler beim Telegram-Senden: {response.text}")
-    except Exception as e:
-        logging.error(f"❌ Ausnahme beim Telegram-Versand: {e}")
+    for block in blocks:
+        try:
+            response = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                data={"chat_id": TELEGRAM_CHAT_ID, "text": block, "parse_mode": "Markdown"}
+            )
+            if response.status_code == 200:
+                logging.info("📤 Erfolgreich an Telegram gesendet")
+            else:
+                logging.error(f"❌ Fehler beim Telegram-Senden: {response.text}")
+        except Exception as e:
+            logging.error(f"❌ Ausnahme beim Telegram-Versand: {e}")
 
 
 def main():
