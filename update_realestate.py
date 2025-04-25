@@ -18,8 +18,9 @@ logging.basicConfig(
 
 # Ziel-URLs (Seiten, die neue Immobilienprojekte auflisten)
 TARGET_URLS = [
-    "https://www.constructionweekonline.com/projects-tenders",
-    "https://www.arabianbusiness.com/industries/real-estate"
+    "https://www.propertyfinder.ae/blog/category/news/",
+    "https://www.bayut.com/mybayut/category/property-launches/",
+    "https://www.emaar.com/en/what-we-do/residential/new-launch/"
 ]
 
 MAX_ARTICLES = 5
