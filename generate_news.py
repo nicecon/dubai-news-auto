@@ -105,7 +105,7 @@ def format_news(news_items):
         if not summary_raw and "content" in item and len(item["content"]) > 0:
             summary_raw = item["content"][0].get("value", "")
         summary = translate_text(strip_html(summary_raw))
-        prefix = "🚨 BREAKING: " if any(keyword in title.lower() for keyword in BREAKING_KEYWORDS) else f"{i}. "
+        prefix = "🚨 BREAKING: " if any(keyword in title.lower() for keyword in BREAKING_KEYWORDS) else ""
         block = f"Dubai-News – {today}\n\n{prefix}{title}\n{summary}\n{link}"
         blocks.append(block)
 
