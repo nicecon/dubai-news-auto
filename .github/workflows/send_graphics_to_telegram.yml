@@ -1,35 +1,40 @@
-name: 📤 Grafiken automatisch an Telegram senden
+name: 📤 Telegram Grafikversand
 
 on:
   schedule:
-    - cron: '25 5 * * *'  # Täglich um 09:25 Uhr Dubai-Zeit (UTC+4)
+    - cron: '25 5 * * *'  # 09:25 Uhr Dubai-Zeit
   workflow_dispatch:
 
 jobs:
-  send-to-telegram:
+  send-graphics:
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Repository auschecken
         uses: actions/checkout@v3
 
-      - name: 📤 Sende PNGs aus graphics/ an Telegram
+      - name: 📸 Sende PNG-Grafiken an Telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "📂 Durchsuche Ordner 'graphics/' nach PNG-Dateien..."
+          echo "📂 Durchsuche graphics/ nach PNG-Dateien..."
 
-          for file in $(find "${GITHUB_WORKSPACE}/graphics" -name "*.png"); do
+          for file in graphics/*.png; do
             echo "📨 Sende $file ..."
-            response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
-              -F chat_id="${TELEGRAM_CHAT_ID}" \
-              -F photo=@"$file")
+            if [[ -f "$file" ]]; then
+              response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
+                -F "chat_id=${TELEGRAM_CHAT_ID}" \
+                -F "photo=@$file;type=image/png")
 
-            if echo "$response" | grep -q '"ok":true'; then
-              echo "✅ Erfolgreich gesendet: $file"
-            else
-              echo "❌ Fehler beim Senden von $file"
               echo "📦 Antwort: $response"
+
+              if echo "$response" | grep -q '"ok":true'; then
+                echo "✅ Erfolgreich gesendet: $file"
+              else
+                echo "❌ Fehler beim Senden von $file"
+              fi
+            else
+              echo "⚠️ Datei nicht gefunden: $file"
             fi
           done
