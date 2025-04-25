@@ -26,7 +26,7 @@ jobs:
           pip install feedparser pytz openai requests beautifulsoup4
 
       - name: Run news script
-        run: python dein_skriptname.py  # <-- Hier bitte deinen Dateinamen einsetzen (z.B. dubai_news_scraper.py)
+        run: python update_realestate.py  # 👉 DEIN SKRIPTNAME richtig eingetragen
 
       - name: Debug file output
         run: |
