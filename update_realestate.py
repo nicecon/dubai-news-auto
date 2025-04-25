@@ -1,101 +1,103 @@
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import os
 import logging
 from openai import OpenAI
-import re
 
+# Setup OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Setup Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler()]
 )
 
+# Konfiguration
 TARGET_URLS = [
     "https://properties.emaar.com/en/latest-launches/",
-    "https://www.dp.ae/our-portfolio/latest-projects/",
     "https://meraas.com/en/latest-project-page",
     "https://www.azizidevelopments.com/projects"
 ]
 
-MAX_ARTICLES = 4
+MAX_PROJECTS = 4
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-PROJECT_KEYWORDS = [
-    "launch", "new", "development", "off-plan",
-    "residential", "project", "announces", "coming soon"
-]
+BAD_KEYWORDS = ["latest", "view all", "portfolio", "about", "search"]
 
-DATE_LIMIT = datetime.now() - timedelta(days=30)
-DATE_PATTERN = re.compile(r'(\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4})')
+# OpenAI Zusammenfassung
 
-
-def summarize_short(text):
+def summarize_text(text):
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Du bist ein erfahrener Immobilienjournalist. Schreibe maximal 2 elegante, professionelle Sätze für ein Neubauprojekt in Dubai. Kein Ort, kein Preis, keine Liste. Nur stilvoller Kurztext."},
-                {"role": "user", "content": f"Projektbeschreibung zusammenfassen: {text}"}
+                {"role": "system", "content": "Du bist Immobilienjournalist. Schreibe maximal 2 elegante Sätze über ein neues Bauprojekt in Dubai."},
+                {"role": "user", "content": f"Kurzbeschreibung: {text}"}
             ]
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        logging.warning(f"⚠️ Fehler bei Zusammenfassung: {e}")
+        logging.error(f"❌ Fehler bei OpenAI: {e}")
         return text
 
+# Projektseiten finden
 
-def fetch_project_news():
-    articles = []
-    for url in TARGET_URLS:
+def fetch_projects():
+    projects = []
+
+    for base_url in TARGET_URLS:
         try:
-            response = requests.get(url, timeout=15)
-            soup = BeautifulSoup(response.content, "html.parser")
+            resp = requests.get(base_url, timeout=20)
+            soup = BeautifulSoup(resp.content, "html.parser")
             links = soup.find_all("a", href=True)
-            for tag in links:
-                text = tag.get_text(strip=True)
-                href = tag["href"]
+
+            for link in links:
+                title = link.get_text(strip=True)
+                href = link["href"]
                 if not href.startswith("http"):
-                    href = url.rstrip("/") + "/" + href.lstrip("/")
-                if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS):
-                    try:
-                        check = requests.head(href, timeout=10)
-                        if check.status_code == 200:
-                            articles.append({"title": text, "url": href})
-                    except:
-                        continue
+                    href = base_url.rstrip("/") + "/" + href.lstrip("/")
+
+                if any(bad in title.lower() for bad in BAD_KEYWORDS):
+                    continue
+
+                try:
+                    check = requests.head(href, timeout=10)
+                    if check.status_code == 200:
+                        projects.append({"title": title, "url": href})
+                except:
+                    continue
+
         except Exception as e:
-            logging.error(f"❌ Fehler bei {url}: {e}")
+            logging.error(f"❌ Fehler bei {base_url}: {e}")
 
+    # Doppelte Links entfernen
     seen = set()
-    unique = []
-    for a in articles:
-        if a["url"] not in seen:
-            seen.add(a["url"])
-            unique.append(a)
+    unique_projects = []
+    for p in projects:
+        if p["url"] not in seen:
+            seen.add(p["url"])
+            unique_projects.append(p)
 
-    return unique[:MAX_ARTICLES]
+    return unique_projects[:MAX_PROJECTS]
 
+# Formatieren für Ausgabe
 
-def format_news(news_items):
-    if not news_items:
-        return ["**Aktuelle Neubauprojekte in Dubai**\n\nZurzeit liegen keine neuen Meldungen vor."]
-
+def format_projects(projects):
     blocks = []
-    for item in news_items:
-        title = item["title"].strip()
-        url = item["url"]
-        summary = summarize_short(title)
-        block = f"**{title}**\n{summary}\n[Zum Projekt]({url})"
+    for p in projects:
+        title = p["title"]
+        url = p["url"]
+        short_summary = summarize_text(title)
+        block = f"**{title}**\n{short_summary}\n[Zum Projekt]({url})"
         blocks.append(block)
-
     return blocks
 
+# Schreiben in Datei
 
 def write_to_file(blocks):
     os.makedirs("news", exist_ok=True)
@@ -105,10 +107,11 @@ def write_to_file(blocks):
             f.write(block + "\n\n")
         f.write(f"Generiert am: {datetime.now().isoformat()}\n")
 
+# Telegram senden
 
 def send_to_telegram(blocks):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.warning("⚠️ Telegram-Token oder Chat-ID fehlen")
+        logging.warning("⚠️ Telegram-Konfiguration fehlt.")
         return
 
     for block in blocks:
@@ -118,16 +121,17 @@ def send_to_telegram(blocks):
                 data={"chat_id": TELEGRAM_CHAT_ID, "text": block, "parse_mode": "Markdown"}
             )
         except Exception as e:
-            logging.error(f"❌ Fehler beim Telegram-Senden: {e}")
+            logging.error(f"❌ Fehler bei Telegram: {e}")
 
+# Hauptfunktion
 
 def main():
-    logging.info("🚀 Starte Scraping aktueller Projekte in Dubai")
-    news = fetch_project_news()
-    blocks = format_news(news)
+    logging.info("🚀 Starte neues Dubai Projekt-Scraping...")
+    projects = fetch_projects()
+    blocks = format_projects(projects)
     write_to_file(blocks)
     send_to_telegram(blocks)
-    logging.info("✅ Projektnews verarbeitet.")
+    logging.info("✅ Update abgeschlossen.")
 
 if __name__ == "__main__":
     main()
