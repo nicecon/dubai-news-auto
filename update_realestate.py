@@ -3,10 +3,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import os
 import logging
-from openai import OpenAI
-
-# Setup OpenAI
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from urllib.parse import quote_plus
 
 # Setup Logging
 logging.basicConfig(
@@ -15,76 +12,34 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# Konfiguration - Neue Immobilien-News-Seiten
-TARGET_URLS = [
-    "https://gulfnews.com/business/property",
-    "https://www.thenationalnews.com/business/property",
-    "https://www.arabianbusiness.com/industries/real-estate",
-    "https://www.khaleejtimes.com/business/real-estate"
-]
-
-MAX_PROJECTS = 4
+MAX_PROJECTS = 5
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-GOOD_KEYWORDS = ["property", "real estate", "launch", "development", "project", "residences", "tower", "community"]
+GOOGLE_SEARCH_URL = "https://www.google.com/search?q={query}&hl=en&gl=ae"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36"
+}
+
+SEARCH_QUERY = "Dubai new real estate project launch 2025 site:gulfnews.com OR site:thenationalnews.com OR site:propertyfinder.ae"
 
 
-def summarize_text(text):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Du bist Immobilienjournalist. Schreibe maximal 2 elegante Sätze über ein neues Immobilienprojekt in Dubai."},
-                {"role": "user", "content": f"Kurzbeschreibung: {text}"}
-            ]
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        logging.error(f"❌ Fehler bei OpenAI: {e}")
-        return text
-
-
-def fetch_projects():
+def fetch_google_results(query):
     projects = []
+    search_url = GOOGLE_SEARCH_URL.format(query=quote_plus(query))
+    resp = requests.get(search_url, headers=HEADERS, timeout=20)
+    soup = BeautifulSoup(resp.content, "html.parser")
 
-    for base_url in TARGET_URLS:
-        try:
-            resp = requests.get(base_url, timeout=20)
-            soup = BeautifulSoup(resp.content, "html.parser")
-            links = soup.find_all("a", href=True)
+    for g_card in soup.select("div.tF2Cxc"):
+        title_element = g_card.select_one("h3")
+        link_element = g_card.select_one("a")
+        if title_element and link_element:
+            title = title_element.get_text()
+            url = link_element["href"]
+            projects.append({"title": title, "url": url})
 
-            for link in links:
-                title = link.get_text(strip=True)
-                href = link["href"]
-                if not href.startswith("http"):
-                    href = base_url.rstrip("/") + "/" + href.lstrip("/")
-
-                title_lower = title.lower()
-                if not any(keyword in title_lower for keyword in GOOD_KEYWORDS):
-                    continue  # ⛔ Nur relevante Immobilienartikel
-
-                if "dubai" not in title_lower:
-                    continue  # ⛔ Nur Artikel mit Bezug zu Dubai
-
-                try:
-                    check = requests.head(href, timeout=10)
-                    if check.status_code == 200:
-                        projects.append({"title": title, "url": href})
-                except:
-                    continue
-
-        except Exception as e:
-            logging.error(f"❌ Fehler bei {base_url}: {e}")
-
-    seen = set()
-    unique_projects = []
-    for p in projects:
-        if p["url"] not in seen:
-            seen.add(p["url"])
-            unique_projects.append(p)
-
-    return unique_projects[:MAX_PROJECTS]
+    return projects[:MAX_PROJECTS]
 
 
 def format_projects(projects):
@@ -92,7 +47,7 @@ def format_projects(projects):
     for p in projects:
         title = p["title"]
         url = p["url"]
-        short_summary = summarize_text(title)
+        short_summary = f"Neues Projekt: {title}"
         block = f"**{title}**\n{short_summary}\n[Zum Artikel]({url})"
         blocks.append(block)
     return blocks
@@ -123,8 +78,8 @@ def send_to_telegram(blocks):
 
 
 def main():
-    logging.info("🚀 Starte Immobilien-News Scraping...")
-    projects = fetch_projects()
+    logging.info("🚀 Starte Google News Scraping...")
+    projects = fetch_google_results(SEARCH_QUERY)
     blocks = format_projects(projects)
     write_to_file(blocks)
     send_to_telegram(blocks)
