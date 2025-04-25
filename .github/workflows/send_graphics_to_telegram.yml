@@ -1,0 +1,30 @@
+name: Send Instagram Graphics to Telegram
+
+on:
+  schedule:
+    - cron: '20 5 * * *'  # 5 Minuten nach der Generierung (5:20 UTC ≈ 9:20 Dubai-Zeit)
+  workflow_dispatch:
+
+jobs:
+  send-graphics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: 📦 Install curl
+        run: sudo apt-get install -y curl
+
+      - name: 🖼️ Sende Grafiken an Telegram
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          for file in graphics/*.png; do
+            echo "📨 Sende $file an Telegram..."
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto" \
+              -F chat_id="${TELEGRAM_CHAT_ID}" \
+              -F photo=@"$file" \
+              || echo "❌ Fehler beim Senden von $file"
+          done
