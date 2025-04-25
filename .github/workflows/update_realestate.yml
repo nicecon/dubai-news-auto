@@ -1,122 +1,44 @@
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
-import os
-import logging
-from openai import OpenAI
+name: Manuelles Update Dubai Real Estate News
 
-# Setup OpenAI
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+on:
+  workflow_dispatch:  # Nur manuell auslösbar
 
-# Setup Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()]
-)
+jobs:
+  update-news:
+    runs-on: ubuntu-latest
 
-# Konfiguration
-TARGET_URLS = [
-    "https://gulfnews.com/business/property",
-    "https://www.thenationalnews.com/business/property",
-    "https://www.arabianbusiness.com/industries/real-estate",
-    "https://www.khaleejtimes.com/business/real-estate"
-]
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
-MAX_PROJECTS = 4
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
 
-def summarize_text(text):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Du bist Immobilienjournalist. Schreibe maximal 2 elegante Sätze über ein neues Immobilienprojekt in Dubai."},
-                {"role": "user", "content": f"Kurzbeschreibung: {text}"}
-            ]
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        logging.error(f"❌ Fehler bei OpenAI: {e}")
-        return text
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-def fetch_projects():
-    projects = []
+      - name: Install dependencies
+        run: |
+          pip install feedparser pytz openai requests beautifulsoup4
 
-    for base_url in TARGET_URLS:
-        try:
-            resp = requests.get(base_url, timeout=20)
-            soup = BeautifulSoup(resp.content, "html.parser")
-            links = soup.find_all("a", href=True)
+      - name: Run news script
+        run: python dein_skriptname.py  # <-- Hier bitte deinen Dateinamen einsetzen (z.B. dubai_news_scraper.py)
 
-            for link in links:
-                title = link.get_text(strip=True)
-                href = link["href"]
-                if not href.startswith("http"):
-                    href = base_url.rstrip("/") + "/" + href.lstrip("/")
+      - name: Debug file output
+        run: |
+          echo "✅ Listing news directory content:"
+          ls -lh news
+          echo "✅ File preview:"
+          head -n 40 news/dubai-neubauprojekte-news.txt || echo "❌ Datei nicht vorhanden"
 
-                if len(title) < 10:
-                    continue
-
-                try:
-                    check = requests.head(href, timeout=10)
-                    if check.status_code == 200:
-                        projects.append({"title": title, "url": href})
-                except:
-                    continue
-
-        except Exception as e:
-            logging.error(f"❌ Fehler bei {base_url}: {e}")
-
-    seen = set()
-    unique_projects = []
-    for p in projects:
-        if p["url"] not in seen:
-            seen.add(p["url"])
-            unique_projects.append(p)
-
-    return unique_projects[:MAX_PROJECTS]
-
-def format_projects(projects):
-    blocks = []
-    for p in projects:
-        title = p["title"]
-        url = p["url"]
-        short_summary = summarize_text(title)
-        block = f"**{title}**\n{short_summary}\n[Zum Projekt]({url})"
-        blocks.append(block)
-    return blocks
-
-def write_to_file(blocks):
-    os.makedirs("news", exist_ok=True)
-    with open("news/dubai-realestate-news.txt", "w", encoding="utf-8") as f:
-        f.write("# Diese Datei wurde automatisch generiert\n\n")
-        for block in blocks:
-            f.write(block + "\n\n")
-        f.write(f"Generiert am: {datetime.now().isoformat()}\n")
-
-def send_to_telegram(blocks):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.warning("⚠️ Telegram-Konfiguration fehlt.")
-        return
-
-    for block in blocks:
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                data={"chat_id": TELEGRAM_CHAT_ID, "text": block, "parse_mode": "Markdown"}
-            )
-        except Exception as e:
-            logging.error(f"❌ Fehler bei Telegram: {e}")
-
-def main():
-    logging.info("🚀 Starte Immobilien-News Scraping...")
-    projects = fetch_projects()
-    blocks = format_projects(projects)
-    write_to_file(blocks)
-    send_to_telegram(blocks)
-    logging.info("✅ Update abgeschlossen.")
-
-if __name__ == "__main__":
-    main()
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add news/dubai-neubauprojekte-news.txt
+          git commit -m "Manuelles Update Dubai Real Estate News" || echo "No changes to commit"
+          git push
