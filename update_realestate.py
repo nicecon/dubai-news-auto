@@ -7,17 +7,14 @@ import logging
 from openai import OpenAI
 import re
 
-# Setup OpenAI API
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Logger setup
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler()]
 )
 
-# Nur URLs, die wirklich Dubai-Projekte zeigen
 TARGET_URLS = [
     "https://properties.emaar.com/en/latest-launches/",
     "https://www.dp.ae/our-portfolio/latest-projects/",
@@ -38,21 +35,18 @@ DATE_LIMIT = datetime.now() - timedelta(days=30)
 DATE_PATTERN = re.compile(r'(\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4})')
 
 
-def translate_text(text):
-    logging.info(f"🔁 Erstelle kurze Zusammenfassung für: {text[:80]}...")
+def summarize_short(text):
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Du bist ein professioneller deutscher Immobilienredakteur. Erstelle elegante, präzise Kurzbeschreibungen für Immobilienprojekte in Dubai."},
-                {"role": "user", "content": f"Fasse dieses Neubauprojekt in Dubai elegant zusammen: {text}"}
+                {"role": "system", "content": "Du bist ein erfahrener Immobilienjournalist. Schreibe maximal 2 elegante, professionelle Sätze für ein Neubauprojekt in Dubai. Kein Ort, kein Preis, keine Liste. Nur stilvoller Kurztext."},
+                {"role": "user", "content": f"Projektbeschreibung zusammenfassen: {text}"}
             ]
         )
-        result = response.choices[0].message.content.strip()
-        logging.info(f"✅ Zusammenfassung erstellt: {result[:80]}...")
-        return result
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        logging.error(f"❌ Fehler bei Zusammenfassung: {e}")
+        logging.warning(f"⚠️ Fehler bei Zusammenfassung: {e}")
         return text
 
 
@@ -79,73 +73,40 @@ def fetch_project_news():
             for tag in links:
                 text = tag.get_text(strip=True)
                 href = tag["href"]
-                if ("dubai" in text.lower() and any(keyword in text.lower() for keyword in PROJECT_KEYWORDS)):
-                    if not href.startswith("http"):
-                        href = url.rstrip("/") + "/" + href.lstrip("/")
+                if not href.startswith("http"):
+                    href = url.rstrip("/") + "/" + href.lstrip("/")
+                if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS) and "dubai" in text.lower():
                     if not any(x in href.lower() for x in ["/project/", "/developments/", "/residences/"]):
                         continue
-                    if "404" in href.lower():
-                        continue
-
-                    # Hole Projektdetailseite
                     try:
-                        proj_resp = requests.get(href, timeout=10)
-                        proj_soup = BeautifulSoup(proj_resp.content, "html.parser")
-                        image = proj_soup.find("img")
-                        image_url = image["src"] if image and "src" in image.attrs else ""
-                        location = ""
-                        price = ""
-
-                        # Standort & Preis extrahieren
-                        for tag_text in proj_soup.stripped_strings:
-                            if "location" in tag_text.lower():
-                                location = tag_text
-                            if any(p in tag_text.lower() for p in ["aed", "price", "from"]):
-                                price = tag_text
-
-                        articles.append({
-                            "title": text,
-                            "url": href,
-                            "image": image_url,
-                            "location": location,
-                            "price": price
-                        })
-                    except Exception as e:
-                        logging.warning(f"⚠️ Detailseite nicht ladbar: {href}")
+                        check = requests.head(href, timeout=10)
+                        if check.status_code == 200:
+                            articles.append({"title": text, "url": href})
+                    except:
+                        continue
         except Exception as e:
-            logging.error(f"❌ Fehler beim Abrufen von {url}: {e}")
+            logging.error(f"❌ Fehler bei {url}: {e}")
 
     seen = set()
-    unique_articles = []
-    for article in articles:
-        if article["url"] not in seen:
-            unique_articles.append(article)
-            seen.add(article["url"])
+    unique = []
+    for a in articles:
+        if a["url"] not in seen:
+            seen.add(a["url"])
+            unique.append(a)
 
-    return unique_articles[:MAX_ARTICLES]
+    return unique[:MAX_ARTICLES]
 
 
 def format_news(news_items):
     if not news_items:
-        return ["Aktuelle Neubauprojekte in Dubai:\n\nKeine aktuellen Projektankündigungen verfügbar."]
+        return ["**Aktuelle Neubauprojekte in Dubai**\n\nZurzeit liegen keine neuen Meldungen vor."]
 
     blocks = []
     for item in news_items:
         title = item["title"].strip()
-        description = translate_text(title)
-        link = item["url"]
-        image = item.get("image", "")
-        location = item.get("location", "")
-        price = item.get("price", "")
-
-        block = f"**{title}**\n"
-        if image:
-            block += f"![Projektbild]({image})\n"
-        if location:
-            block += f"📍 {location}\n"
-        if price:
-            block += f"💰 {price}\n"
-        block += f"{description}\n[Zum Projekt]({link})"
+        url = item["url"]
+        summary = summarize_short(title)
+        block = f"**{title}**\n{summary}\n[Zum Projekt]({url})"
         blocks.append(block)
 
     return blocks
@@ -167,26 +128,21 @@ def send_to_telegram(blocks):
 
     for block in blocks:
         try:
-            response = requests.post(
+            requests.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
                 data={"chat_id": TELEGRAM_CHAT_ID, "text": block, "parse_mode": "Markdown"}
             )
-            if response.status_code == 200:
-                logging.info("📤 Erfolgreich an Telegram gesendet")
-            else:
-                logging.error(f"❌ Fehler beim Telegram-Senden: {response.text}")
         except Exception as e:
-            logging.error(f"❌ Ausnahme beim Telegram-Versand: {e}")
+            logging.error(f"❌ Fehler beim Telegram-Senden: {e}")
 
 
 def main():
-    logging.info("🚀 Starte Scraping von Dubai-Projektseiten")
+    logging.info("🚀 Starte Scraping aktueller Projekte in Dubai")
     news = fetch_project_news()
     blocks = format_news(news)
     write_to_file(blocks)
     send_to_telegram(blocks)
-    logging.info("✅ Verarbeitung abgeschlossen.")
-
+    logging.info("✅ Projektnews verarbeitet.")
 
 if __name__ == "__main__":
     main()
