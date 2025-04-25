@@ -2,8 +2,8 @@ name: 📤 Grafiken automatisch an Telegram senden
 
 on:
   schedule:
-    - cron: '25 5 * * *'  # Täglich um 09:25 Dubai-Zeit (UTC+4)
-  workflow_dispatch:      # Optional manuell auslösbar
+    - cron: '25 5 * * *'  # Täglich um 09:25 Uhr Dubai-Zeit (UTC+4)
+  workflow_dispatch:
 
 jobs:
   send-to-telegram:
@@ -20,20 +20,16 @@ jobs:
         run: |
           echo "📂 Durchsuche Ordner 'graphics/' nach PNG-Dateien..."
 
-          for file in graphics/*.png; do
-            if [[ -f "$file" ]]; then
-              echo "📨 Sende $file ..."
-              response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
-                -F chat_id="${TELEGRAM_CHAT_ID}" \
-                -F photo=@"$file")
+          for file in $(find "${GITHUB_WORKSPACE}/graphics" -name "*.png"); do
+            echo "📨 Sende $file ..."
+            response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
+              -F chat_id="${TELEGRAM_CHAT_ID}" \
+              -F photo=@"$file")
 
-              if echo "$response" | grep -q '"ok":true'; then
-                echo "✅ Erfolgreich gesendet: $file"
-              else
-                echo "❌ Fehler beim Senden von $file"
-                echo "📦 Antwort: $response"
-              fi
+            if echo "$response" | grep -q '"ok":true'; then
+              echo "✅ Erfolgreich gesendet: $file"
             else
-              echo "⚠️ Datei nicht gefunden: $file"
+              echo "❌ Fehler beim Senden von $file"
+              echo "📦 Antwort: $response"
             fi
           done
