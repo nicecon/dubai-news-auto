@@ -27,6 +27,9 @@ MAX_PROJECTS = 4
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+GOOD_KEYWORDS = ["property", "real estate", "launch", "development", "project", "residences", "tower", "community"]
+
+
 def summarize_text(text):
     try:
         response = client.chat.completions.create(
@@ -40,6 +43,7 @@ def summarize_text(text):
     except Exception as e:
         logging.error(f"❌ Fehler bei OpenAI: {e}")
         return text
+
 
 def fetch_projects():
     projects = []
@@ -56,8 +60,12 @@ def fetch_projects():
                 if not href.startswith("http"):
                     href = base_url.rstrip("/") + "/" + href.lstrip("/")
 
-                if len(title) < 10:
-                    continue
+                title_lower = title.lower()
+                if not any(keyword in title_lower for keyword in GOOD_KEYWORDS):
+                    continue  # ⛔ Nur relevante Immobilienartikel
+
+                if "dubai" not in title_lower:
+                    continue  # ⛔ Nur Artikel mit Bezug zu Dubai
 
                 try:
                     check = requests.head(href, timeout=10)
@@ -78,6 +86,7 @@ def fetch_projects():
 
     return unique_projects[:MAX_PROJECTS]
 
+
 def format_projects(projects):
     blocks = []
     for p in projects:
@@ -88,6 +97,7 @@ def format_projects(projects):
         blocks.append(block)
     return blocks
 
+
 def write_to_file(blocks):
     os.makedirs("news", exist_ok=True)
     with open("news/dubai-realestate-news.txt", "w", encoding="utf-8") as f:
@@ -95,6 +105,7 @@ def write_to_file(blocks):
         for block in blocks:
             f.write(block + "\n\n")
         f.write(f"Generiert am: {datetime.now().isoformat()}\n")
+
 
 def send_to_telegram(blocks):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -110,6 +121,7 @@ def send_to_telegram(blocks):
         except Exception as e:
             logging.error(f"❌ Fehler bei Telegram: {e}")
 
+
 def main():
     logging.info("🚀 Starte Immobilien-News Scraping...")
     projects = fetch_projects()
@@ -117,6 +129,7 @@ def main():
     write_to_file(blocks)
     send_to_telegram(blocks)
     logging.info("✅ Update abgeschlossen.")
+
 
 if __name__ == "__main__":
     main()
