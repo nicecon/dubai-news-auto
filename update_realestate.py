@@ -25,7 +25,7 @@ TARGET_URLS = [
     "https://www.azizidevelopments.com/projects"
 ]
 
-MAX_ARTICLES = 15
+MAX_ARTICLES = 4
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -40,19 +40,18 @@ DATE_LIMIT = datetime.now() - timedelta(days=30)
 DATE_PATTERN = re.compile(r'(\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4})')
 
 
-
 def translate_text(text):
     logging.info(f"🔁 Übersetze: {text[:80]}...")
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "Du bist ein professioneller deutscher Immobilienredakteur. Übersetze sauber und stilistisch hochwertig."},
-                {"role": "user", "content": text}
+                {"role": "system", "content": "Du bist ein professioneller deutscher Immobilienredakteur. Schreibe kurze, elegante Zusammenfassungen von Immobilienprojekten."},
+                {"role": "user", "content": f"Schreibe eine elegante deutsche Kurzbeschreibung für dieses Immobilienprojekt in Dubai: {text}"}
             ]
         )
         result = response.choices[0].message.content.strip()
-        logging.info(f"✅ Übersetzt: {result[:80]}...")
+        logging.info(f"✅ Zusammenfassung: {result[:80]}...")
         return result
     except Exception as e:
         logging.error(f"❌ Fehler bei Übersetzung: {e}")
@@ -69,7 +68,7 @@ def is_recent(text):
                     return True
             except Exception:
                 continue
-    return True  # Wenn kein Datum vorhanden ist, trotzdem anzeigen
+    return True
 
 
 def fetch_project_news():
@@ -82,32 +81,40 @@ def fetch_project_news():
             links = soup.find_all("a", href=True)
             for tag in links:
                 text = tag.get_text(strip=True)
-                if ("dubai" not in text.lower()):
-                    continue
-                if (any(keyword in text.lower() for keyword in PROJECT_KEYWORDS) and is_recent(text)):
-                    href = tag["href"]
+                href = tag["href"]
+                if ("dubai" in text.lower() and any(keyword in text.lower() for keyword in PROJECT_KEYWORDS)):
                     if not href.startswith("http"):
                         href = url.rstrip("/") + "/" + href.lstrip("/")
-                    if not href.lower().startswith("http") or "404" in href:
+                    if "/project/" not in href.lower() and "/developments/" not in href.lower():
+                        continue
+                    if "404" in href.lower():
                         continue
                     articles.append({"title": text, "url": href})
         except Exception as e:
             logging.error(f"❌ Fehler beim Abrufen von {url}: {e}")
 
-    return articles[:MAX_ARTICLES]
+    # Duplikate entfernen
+    seen = set()
+    unique_articles = []
+    for article in articles:
+        if article["url"] not in seen:
+            unique_articles.append(article)
+            seen.add(article["url"])
+
+    return unique_articles[:MAX_ARTICLES]
 
 
 def format_news(news_items):
-    today = datetime.now(pytz.timezone("Asia/Dubai")).strftime("%d. %B %Y")
-
     if not news_items:
-        return [f"🏗️ Dubai Neubauprojekte – {today}\n\nKeine aktuellen Projektankündigungen gefunden."]
+        return ["🏗️ Aktuelle Neubauprojekte in Dubai:\n\nKeine aktuellen Projektankündigungen verfügbar."]
 
-    blocks = [f"🏗️ Dubai Neubauprojekte – {today}\n"]
+    blocks = ["🏗️ Aktuelle Neubauprojekte in Dubai:\n"]
     for item in news_items:
-        title = translate_text(item["title"])
+        title = item["title"]
+        description = translate_text(title)
         link = item["url"]
-        blocks.append(f"🔹 {title}\n🔗 {link}\n")
+        block = f"🏢 **{title}**\n{description}\n🔗 [Zum Projekt]({link})\n"
+        blocks.append(block)
 
     return blocks
 
@@ -117,8 +124,8 @@ def write_to_file(blocks):
     with open("news/dubai-neubauprojekte-news.txt", "w", encoding="utf-8") as f:
         f.write("# Diese Datei wurde automatisch generiert\n\n")
         for block in blocks:
-            f.write(block + "\n")
-        f.write(f"\nGeneriert am: {datetime.now().isoformat()}\n")
+            f.write(block + "\n\n")
+        f.write(f"Generiert am: {datetime.now().isoformat()}\n")
 
 
 def send_to_telegram(blocks):
@@ -126,18 +133,18 @@ def send_to_telegram(blocks):
         logging.warning("⚠️ Telegram-Token oder Chat-ID fehlen")
         return
 
-    for block in blocks:
-        try:
-            response = requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                data={"chat_id": TELEGRAM_CHAT_ID, "text": block}
-            )
-            if response.status_code == 200:
-                logging.info("📤 Erfolgreich an Telegram gesendet")
-            else:
-                logging.error(f"❌ Fehler beim Telegram-Senden: {response.text}")
-        except Exception as e:
-            logging.error(f"❌ Ausnahme beim Telegram-Versand: {e}")
+    message = "\n".join(blocks)
+    try:
+        response = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            data={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
+        )
+        if response.status_code == 200:
+            logging.info("📤 Erfolgreich an Telegram gesendet")
+        else:
+            logging.error(f"❌ Fehler beim Telegram-Senden: {response.text}")
+    except Exception as e:
+        logging.error(f"❌ Ausnahme beim Telegram-Versand: {e}")
 
 
 def main():
