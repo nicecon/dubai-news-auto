@@ -3,7 +3,7 @@ name: Send Instagram Graphics to Telegram
 on:
   workflow_dispatch:
   schedule:
-    - cron: '20 5 * * *'  # Täglich um 9:20 Uhr Dubai-Zeit (5:20 UTC)
+    - cron: '20 5 * * *'
 
 jobs:
   send-to-telegram:
@@ -13,14 +13,28 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v3
 
-      - name: 📤 Send Graphics to Telegram
+      - name: 🧪 Debug: Liste aller PNG-Dateien
+        run: |
+          echo "📁 Enthaltene PNG-Dateien in 'graphics/'"
+          ls -lh graphics/*.png || echo "⚠️ Keine PNG-Dateien gefunden."
+
+      - name: 📤 Sende PNGs an Telegram
         run: |
           for file in graphics/*.png; do
             echo "📨 Sende $file an Telegram..."
-            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
-              -F chat_id="${TELEGRAM_CHAT_ID}" \
-              -F photo=@"$file" \
-              || echo "❌ Fehler beim Senden von $file"
+            
+            if [[ -f "$file" ]]; then
+              response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
+                -F chat_id="${TELEGRAM_CHAT_ID}" \
+                -F photo=@"$file")
+              
+              echo "📦 Antwort von Telegram:"
+              echo "$response"
+
+              echo "$response" | grep -q '"ok":true' && echo "✅ Erfolgreich gesendet: $file" || echo "❌ Fehler beim Senden: $file"
+            else
+              echo "❌ Datei nicht gefunden: $file"
+            fi
           done
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
