@@ -19,7 +19,6 @@ logging.basicConfig(
 # Ziel-URLs (Seiten, die neue Immobilienprojekte auflisten)
 TARGET_URLS = [
     "https://www.propertyfinder.ae/blog/category/news/",
-    "https://www.bayut.com/mybayut/category/property-launches/",
     "https://www.emaar.com/en/what-we-do/residential/new-launch/"
 ]
 
@@ -51,13 +50,30 @@ def translate_text(text):
         logging.error(f"❌ Fehler bei Übersetzung: {e}")
         return text
 
+def fetch_bayut_projects():
+    url = "https://www.bayut.com/new-projects/uae/"
+    projects = []
+    try:
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.content, "html.parser")
+        cards = soup.select("a[data-testid='project-card']")
+        for card in cards:
+            title = card.get("title") or card.get_text(strip=True)
+            href = card.get("href")
+            if href and not href.startswith("http"):
+                href = "https://www.bayut.com" + href
+            if title:
+                projects.append({"title": title.strip(), "url": href})
+    except Exception as e:
+        logging.error(f"❌ Fehler beim Abrufen von Bayut: {e}")
+    return projects
+
 def fetch_project_news():
-    articles = []
+    articles = fetch_bayut_projects()  # Beginne mit Bayut
     for url in TARGET_URLS:
         try:
             response = requests.get(url, timeout=10)
             soup = BeautifulSoup(response.content, "html.parser")
-            # Suche in Überschriften und Links
             headlines = soup.find_all(["h1", "h2", "h3", "a"])
             for tag in headlines:
                 text = tag.get_text(strip=True)
