@@ -1,11 +1,10 @@
-import feedparser
+import requests
+from bs4 import BeautifulSoup
 from datetime import datetime
 import pytz
-from html.parser import HTMLParser
 import os
 import logging
 from openai import OpenAI
-import requests
 
 # Setup OpenAI API
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -17,51 +16,21 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# Immobilien-spezifische RSS-Feeds
-RSS_FEEDS = [
-    "https://realiste.ai/cities/uae-dubai/c/sqa-real-estate-rss-feeds",
-    "https://dubai.savills.ae/footer/rss-feeds.aspx",
-    "https://www.dubaichronicle.com/news-feeds/"
-]
-
-# Keywords für Neubauprojekte und Entwicklungen
-PROJECT_KEYWORDS = [
-    "new project", "new development", "launched", "launch", "off-plan", 
-    "master development", "under construction", "breaking ground", 
-    "phase one", "groundbreaking", "handover", "luxury tower", 
-    "community launch", "first phase unveiled", "ready projects", 
-    "upcoming projects", "project pipeline", "new communities"
+# Ziel-URLs (Seiten, die neue Immobilienprojekte auflisten)
+TARGET_URLS = [
+    "https://www.constructionweekonline.com/projects-tenders",
+    "https://www.arabianbusiness.com/industries/real-estate"
 ]
 
 MAX_ARTICLES = 5
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-class FigureRemovingParser(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.in_figure = False
-        self.output = []
-
-    def handle_starttag(self, tag, attrs):
-        if tag.lower() == "figure":
-            self.in_figure = True
-
-    def handle_endtag(self, tag):
-        if tag.lower() == "figure":
-            self.in_figure = False
-
-    def handle_data(self, data):
-        if not self.in_figure:
-            self.output.append(data)
-
-    def get_clean_text(self):
-        return ''.join(self.output).strip()
-
-def strip_html(raw_html):
-    parser = FigureRemovingParser()
-    parser.feed(raw_html)
-    return parser.get_clean_text()
+# Keywords für Neubauprojekte
+PROJECT_KEYWORDS = [
+    "launch", "new project", "new development", "off-plan", 
+    "residential community", "construction started", "unveils", "master plan"
+]
 
 def translate_text(text):
     logging.info(f"🔁 Übersetze: {text[:80]}...")
@@ -80,24 +49,20 @@ def translate_text(text):
         logging.error(f"❌ Fehler bei Übersetzung: {e}")
         return text
 
-def matches_keywords(entry):
-    text = ' '.join([
-        entry.get("title", ""),
-        entry.get("description", ""),
-        entry.get("summary", ""),
-        ' '.join([c.get("value", "") for c in entry.get("content", [])]) if "content" in entry else ""
-    ]).lower()
-    return any(keyword in text for keyword in PROJECT_KEYWORDS)
-
 def fetch_project_news():
-    entries = []
-    for url in RSS_FEEDS:
-        feed = feedparser.parse(url)
-        entries.extend(feed.entries)
+    articles = []
+    for url in TARGET_URLS:
+        try:
+            response = requests.get(url, timeout=10)
+            soup = BeautifulSoup(response.content, "html.parser")
+            for link in soup.find_all("a", href=True):
+                text = link.get_text(strip=True)
+                if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS):
+                    articles.append({"title": text, "url": link["href"]})
+        except Exception as e:
+            logging.error(f"❌ Fehler beim Abrufen von {url}: {e}")
 
-    project_news = [entry for entry in entries if matches_keywords(entry)]
-    project_news.sort(key=lambda x: x.get("published_parsed"), reverse=True)
-    return project_news[:MAX_ARTICLES]
+    return articles[:MAX_ARTICLES]
 
 def format_news(news_items):
     today = datetime.now(pytz.timezone("Asia/Dubai")).strftime("%d. %B %Y")
@@ -107,14 +72,10 @@ def format_news(news_items):
 
     blocks = []
     for item in news_items:
-        title = translate_text(item.title.strip())
-        link = item.link.strip()
-        summary_raw = item.get("summary", "").strip()
-        if not summary_raw and "content" in item and len(item["content"]) > 0:
-            summary_raw = item["content"][0].get("value", "")
-        summary = translate_text(strip_html(summary_raw))
+        title = translate_text(item["title"])
+        link = item["url"]
 
-        block = f"Dubai Neubauprojekte-News – {today}\n\n{title}\n{summary}\n{link}"
+        block = f"Dubai Neubauprojekte-News – {today}\n\n{title}\n{link}"
         blocks.append(block)
 
     return blocks
@@ -146,7 +107,7 @@ def send_to_telegram(blocks):
             logging.error(f"❌ Ausnahme beim Telegram-Versand: {e}")
 
 def main():
-    logging.info("🚀 Starte Neubauprojekt-News-Aktualisierung")
+    logging.info("🚀 Starte Scraping von Neubauprojekten")
     news = fetch_project_news()
     blocks = format_news(news)
     write_to_file(blocks)
