@@ -15,7 +15,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# Konfiguration - NEUE Immobilien-News-Seiten
+# Konfiguration - Neue Immobilien-News-Seiten
 TARGET_URLS = [
     "https://gulfnews.com/business/property",
     "https://www.thenationalnews.com/business/property",
