@@ -28,6 +28,8 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 BAD_KEYWORDS = ["latest", "view all", "portfolio", "about", "search"]
+VALID_DOMAINS = ["emaar.com", "meraas.com", "azizidevelopments.com"]
+BAD_LINK_PATTERNS = ["facebook.com", "youtube.com", "broker", "login", "portal", "site.com", "search", "faq", "help"]
 
 # OpenAI Zusammenfassung
 
@@ -62,7 +64,13 @@ def fetch_projects():
                 if not href.startswith("http"):
                     href = base_url.rstrip("/") + "/" + href.lstrip("/")
 
-                if any(bad in title.lower() for bad in BAD_KEYWORDS):
+                if not any(domain in href for domain in VALID_DOMAINS):
+                    continue
+
+                if any(bad in href.lower() for bad in BAD_LINK_PATTERNS):
+                    continue
+
+                if len(title) < 5 or any(bad in title.lower() for bad in BAD_KEYWORDS):
                     continue
 
                 try:
@@ -75,7 +83,6 @@ def fetch_projects():
         except Exception as e:
             logging.error(f"❌ Fehler bei {base_url}: {e}")
 
-    # Doppelte Links entfernen
     seen = set()
     unique_projects = []
     for p in projects:
