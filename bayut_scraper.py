@@ -19,19 +19,19 @@ OUTPUT_FILE = "news/dubai-bayut-projects.txt"
 async def scrape_bayut_projects():
     projects = []
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        await page.goto("https://www.bayut.com/new-projects/uae/", timeout=60000)
+        browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+        context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36")
+        page = await context.new_page()
+        await page.goto("https://www.bayut.com/new-projects/uae/", timeout=90000)
 
-        # Warten, bis alle Projekte sichtbar sind
-        await page.wait_for_selector('li[class*=styles_projectCard]', timeout=30000)
+        # Warten, bis Listings erscheinen
+        await page.wait_for_selector('li[class*=styles_projectCard]', timeout=60000)
 
-        # Alle Projektkarten finden
         listings = await page.query_selector_all('li[class*=styles_projectCard]')
 
         for listing in listings:
             name_element = await listing.query_selector("h2")
-            location_element = await listing.query_selector("div >> text=Dubai")
+            location_element = await listing.query_selector("div:has-text(\"Dubai\")")
             link_element = await listing.query_selector("a")
 
             if name_element and location_element and link_element:
