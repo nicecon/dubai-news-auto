@@ -1,40 +1,59 @@
-name: 📤 Sende Instagram Grafiken an Telegram
+name: 📤 Send Instagram Graphics to Telegram
 
 on:
-  workflow_dispatch:  # Manuell auslösbar
+  workflow_dispatch:  # Manuelles Auslösen
   schedule:
-    - cron: '25 5 * * *'  # Täglich um 9:25 Uhr Dubai-Zeit (5:25 UTC)
+    - cron: '30 5 * * *'  # Täglich um 09:30 Uhr Dubai-Zeit (5:30 UTC)
 
 jobs:
-  send-to-telegram:
+  send-graphics:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Repository
+      - name: 📥 Repository auschecken
         uses: actions/checkout@v3
 
-      - name: 🧪 Zeige vorhandene Bilder
+      - name: 🐍 Python einrichten
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Abhängigkeiten installieren
         run: |
-          echo "📁 Inhalte im graphics-Verzeichnis:"
-          ls -lh graphics || echo "⚠️ Kein graphics-Verzeichnis gefunden"
+          pip install pillow cairosvg
+
+      - name: 🖼️ Instagram-Bilder generieren
+        run: python generate_graphic.py
+
+      - name: 📂 Verzeichnisinhalt anzeigen
+        run: |
+          echo "📁 Inhalt des Verzeichnisses 'graphics':"
+          ls -lh graphics
 
       - name: 📤 Sende Bilder an Telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          for file in $(find "${GITHUB_WORKSPACE}/graphics" -name "*.png"); do
-            echo "📨 Sende $file an Telegram..."
+          for file in graphics/*.png; do
+            if [ -f "$file" ]; then
+              echo "📨 Sende $file an Telegram..."
 
-            response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
-              -F chat_id="${TELEGRAM_CHAT_ID}" \
-              -F photo=@"$file")
+              response=$(curl -s -w "%{http_code}" -o response.json -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
+                -F chat_id="${TELEGRAM_CHAT_ID}" \
+                -F photo=@"$file")
 
-            echo "📦 Antwort: $response"
+              echo "📦 HTTP Code: $response"
+              echo "📝 Antwortinhalt:"
+              cat response.json
 
-            if echo "$response" | grep -q '"ok":true'; then
-              echo "✅ Erfolgreich gesendet: $file"
+              if grep -q '"ok":true' response.json; then
+                echo "✅ Erfolgreich gesendet: $file"
+              else
+                echo "❌ Fehler beim Senden von $file"
+              fi
+              echo ""
             else
-              echo "❌ Fehler beim Senden von $file"
+              echo "⚠️ Datei nicht gefunden: $file"
             fi
           done
