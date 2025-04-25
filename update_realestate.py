@@ -16,13 +16,19 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()]
 )
 
-# Ziel-URLs (Seiten, die neue Immobilienprojekte auflisten)
+# Ziel-URLs der wichtigsten Bauträger in Dubai
 TARGET_URLS = [
-    "https://www.propertyfinder.ae/blog/category/news/",
-    "https://www.emaar.com/en/what-we-do/residential/new-launch/"
+    "https://www.nakheel.com/en/new-launches",
+    "https://properties.emaar.com/en/",
+    "https://www.dp.ae/our-portfolio/latest-projects/",
+    "https://meraas.com/en/latest-project-page",
+    "https://www.select-group.ae/developments",
+    "https://www.binghattiproperties.co",
+    "https://www.azizidevelopments.com/projects",
+    "https://properties.emaar.com/en/latest-launches/"
 ]
 
-MAX_ARTICLES = 5
+MAX_ARTICLES = 15
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -50,49 +56,22 @@ def translate_text(text):
         logging.error(f"❌ Fehler bei Übersetzung: {e}")
         return text
 
-def fetch_bayut_projects():
-    url = "https://www.bayut.com/new-projects/uae/"
-    projects = []
-    try:
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.content, "html.parser")
-        listings = soup.select("li[class*=styles_projectCard]")
-
-        for listing in listings:
-            name_tag = listing.find("h2")
-            location_tag = listing.find("div", string=lambda t: t and "Dubai" in t)
-            link_tag = listing.find("a", href=True)
-
-            if name_tag and location_tag and link_tag:
-                name = name_tag.get_text(strip=True)
-                location = location_tag.get_text(strip=True)
-                href = link_tag["href"]
-                if not href.startswith("http"):
-                    href = "https://www.bayut.com" + href
-
-                projects.append({
-                    "title": f"{name} – {location}",
-                    "url": href
-                })
-
-    except Exception as e:
-        logging.error(f"❌ Fehler beim Abrufen von Bayut: {e}")
-    return projects
-
 def fetch_project_news():
-    articles = fetch_bayut_projects()  # Beginne mit Bayut
+    articles = []
     for url in TARGET_URLS:
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=15)
             soup = BeautifulSoup(response.content, "html.parser")
-            headlines = soup.find_all(["h1", "h2", "h3", "a"])
-            for tag in headlines:
+
+            # Suche Links und Headlines zu Projekten
+            links = soup.find_all("a", href=True)
+            for tag in links:
                 text = tag.get_text(strip=True)
-                if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS):
-                    href = tag.get("href")
-                    if href and not href.startswith("http"):
+                if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS) or len(text) > 10:
+                    href = tag["href"]
+                    if not href.startswith("http"):
                         href = url.rstrip("/") + "/" + href.lstrip("/")
-                    articles.append({"title": text, "url": href or url})
+                    articles.append({"title": text, "url": href})
         except Exception as e:
             logging.error(f"❌ Fehler beim Abrufen von {url}: {e}")
 
@@ -141,7 +120,7 @@ def send_to_telegram(blocks):
             logging.error(f"❌ Ausnahme beim Telegram-Versand: {e}")
 
 def main():
-    logging.info("🚀 Starte Scraping von Neubauprojekten")
+    logging.info("🚀 Starte Scraping von Bauträgerseiten")
     news = fetch_project_news()
     blocks = format_news(news)
     write_to_file(blocks)
