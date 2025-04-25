@@ -56,14 +56,25 @@ def fetch_bayut_projects():
     try:
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.content, "html.parser")
-        cards = soup.select("a[data-testid='project-card']")
-        for card in cards:
-            title = card.get("title") or card.get_text(strip=True)
-            href = card.get("href")
-            if href and not href.startswith("http"):
-                href = "https://www.bayut.com" + href
-            if title:
-                projects.append({"title": title.strip(), "url": href})
+        listings = soup.select("li[class*=styles_projectCard]")
+
+        for listing in listings:
+            name_tag = listing.find("h2")
+            location_tag = listing.find("div", string=lambda t: t and "Dubai" in t)
+            link_tag = listing.find("a", href=True)
+
+            if name_tag and location_tag and link_tag:
+                name = name_tag.get_text(strip=True)
+                location = location_tag.get_text(strip=True)
+                href = link_tag["href"]
+                if not href.startswith("http"):
+                    href = "https://www.bayut.com" + href
+
+                projects.append({
+                    "title": f"{name} – {location}",
+                    "url": href
+                })
+
     except Exception as e:
         logging.error(f"❌ Fehler beim Abrufen von Bayut: {e}")
     return projects
