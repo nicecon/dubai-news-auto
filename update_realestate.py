@@ -29,7 +29,8 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 # Keywords für Neubauprojekte
 PROJECT_KEYWORDS = [
     "launch", "new project", "new development", "off-plan", 
-    "residential community", "construction started", "unveils", "master plan"
+    "residential community", "construction started", "unveils", "master plan",
+    "announces", "breaks ground", "launching soon", "sales event"
 ]
 
 def translate_text(text):
@@ -55,10 +56,15 @@ def fetch_project_news():
         try:
             response = requests.get(url, timeout=10)
             soup = BeautifulSoup(response.content, "html.parser")
-            for link in soup.find_all("a", href=True):
-                text = link.get_text(strip=True)
+            # Suche in Überschriften und Links
+            headlines = soup.find_all(["h1", "h2", "h3", "a"])
+            for tag in headlines:
+                text = tag.get_text(strip=True)
                 if any(keyword in text.lower() for keyword in PROJECT_KEYWORDS):
-                    articles.append({"title": text, "url": link["href"]})
+                    href = tag.get("href")
+                    if href and not href.startswith("http"):
+                        href = url.rstrip("/") + "/" + href.lstrip("/")
+                    articles.append({"title": text, "url": href or url})
         except Exception as e:
             logging.error(f"❌ Fehler beim Abrufen von {url}: {e}")
 
