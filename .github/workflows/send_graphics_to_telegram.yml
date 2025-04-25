@@ -1,7 +1,7 @@
 name: 📤 Send Instagram Graphics to Telegram
 
 on:
-  workflow_dispatch:  # Manuelles Auslösen
+  workflow_dispatch:  # Manuell auslösbar
   schedule:
     - cron: '30 5 * * *'  # Täglich um 09:30 Uhr Dubai-Zeit (5:30 UTC)
 
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Repository auschecken
+      - name: 📥 Checkout repository
         uses: actions/checkout@v3
 
       - name: 🐍 Python einrichten
@@ -22,20 +22,19 @@ jobs:
         run: |
           pip install pillow cairosvg
 
-      - name: 🖼️ Instagram-Bilder generieren
+      - name: 🖼️ Bilder generieren
         run: python generate_graphic.py
 
-      - name: 📂 Verzeichnisinhalt anzeigen
-        run: |
-          echo "📁 Inhalt des Verzeichnisses 'graphics':"
-          ls -lh graphics
-
-      - name: 📤 Sende Bilder an Telegram
+      - name: 📤 Bilder an Telegram senden
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          for file in graphics/*.png; do
+          GRAPHICS_DIR="${GITHUB_WORKSPACE}/graphics"
+          
+          echo "📂 Sende alle Bilder aus $GRAPHICS_DIR an Telegram..."
+
+          for file in "$GRAPHICS_DIR"/*.png; do
             if [ -f "$file" ]; then
               echo "📨 Sende $file an Telegram..."
 
@@ -43,8 +42,8 @@ jobs:
                 -F chat_id="${TELEGRAM_CHAT_ID}" \
                 -F photo=@"$file")
 
-              echo "📦 HTTP Code: $response"
-              echo "📝 Antwortinhalt:"
+              echo "📦 HTTP-Code: $response"
+              echo "📝 Telegram Antwort:"
               cat response.json
 
               if grep -q '"ok":true' response.json; then
