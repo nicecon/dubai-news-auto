@@ -15,9 +15,9 @@ CATEGORIES = [
     ("off_plan_project",
      "Nenne ein aktuelles, neu angekündigtes oder im Bau befindliches Off-Plan Immobilienprojekt in Dubai. "
      "Der geplante Fertigstellungstermin muss 2025 oder später liegen."
-     "Gib zuerst nur den Projektnamen (ohne Zusatz), dann ein Zeilenumbruch, dann eine kurze fließende Beschreibung "
+     "Gib zuerst nur den Projektnamen, dann ein Zeilenumbruch, dann eine kurze fließende Beschreibung "
      "(maximal 2 stilvolle Sätze auf Deutsch, inklusive Fertigstellungstermin falls bekannt). "
-     "Keine Listen, keine Einleitungen, keine Stichwörter, nur sauberer Text.")
+     "Keine Listen, keine Einleitungen, keine Stichwörter, nur sauberer Text. keine Erfindungen. Alles muss den Tatsachen entsprechen")
 ]
 
 IMG_WIDTH = 1080
@@ -80,13 +80,16 @@ def wrap_text(draw, text, font, max_width):
     return lines
 
 def draw_wrapped_text(draw, text, font, start_y, max_width, max_height):
+    line_spacing = 10  # Hier stellst du deinen festen Zeilenabstand ein (z.B. 8 oder 10)
+
     lines = wrap_text(draw, text, font, max_width)
     y = start_y
     for l in lines:
-        if y + draw.textbbox((0, 0), l, font=font)[3] > max_height:
+        text_height = draw.textbbox((0, 0), l, font=font)[3] - draw.textbbox((0, 0), l, font=font)[1]
+        if y + text_height > max_height:
             break
         draw.text((PADDING, y), l, font=font, fill=TEXT_COLOR)
-        y += draw.textbbox((0, 0), l, font=font)[3] + 6
+        y += text_height + line_spacing
     return y
 
 def add_logo(image, index):
