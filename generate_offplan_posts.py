@@ -12,7 +12,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Kategorien und zugehörige Prompts
 CATEGORIES = [
-    ("off_plan_project", "Nenne ein aktuelles, öffentlich angekündigtes Dubai Off-Plan Immobilienprojekt. Gib Projektname und eine fließende, kurze Beschreibung auf Deutsch, maximal 2 Sätze. Keine Erfindungen, nur reale Projekte.")
+    ("off_plan_project", "Nenne ein aktuelles, offiziell angekündigtes Dubai Off-Plan Immobilienprojekt. Gib NUR den Projektnamen (ohne Zusätze) und eine fließende, kurze Beschreibung auf Deutsch (maximal 2 Sätze). Falls bekannt, nenne auch den geplanten Fertigstellungstermin. Keine Erfindungen.")
 ]
 
 IMG_WIDTH = 1080
@@ -29,7 +29,7 @@ def generate_gpt_text(prompt):
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "Du bist ein Immobilien-Content-Creator für Dubai. Du gibst echte, aktuelle Off-Plan Projekte wieder, stilvoll und korrekt."},
+            {"role": "system", "content": "Du bist Immobilien-Content-Creator für Dubai. Gib reale, aktuelle Off-Plan Projekte wieder: Projektnamen separat + kurze Beschreibung inkl. Fertigstellung, falls verfügbar."},
             {"role": "user", "content": prompt}
         ]
     )
@@ -52,8 +52,8 @@ def add_dark_overlay(image):
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 140))
     return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
-def draw_text_block(draw, text, font, start_y, max_width, max_height):
-    words = text.replace("\"", "").split()
+def wrap_text(draw, text, font, max_width):
+    words = text.split()
     lines, line = [], ""
     for word in words:
         test_line = f"{line} {word}".strip()
@@ -64,7 +64,10 @@ def draw_text_block(draw, text, font, start_y, max_width, max_height):
             line = word
     if line:
         lines.append(line)
+    return lines
 
+def draw_wrapped_text(draw, text, font, start_y, max_width, max_height):
+    lines = wrap_text(draw, text, font, max_width)
     y = start_y
     for l in lines:
         if y + draw.textbbox((0, 0), l, font=font)[3] > max_height:
@@ -104,16 +107,19 @@ def create_post_image(category, text, index):
     if "\n" in content:
         project_name, description = content.split("\n", 1)
     else:
-        project_name, description = content, ""
+        parts = content.split("-", 1)
+        project_name = parts[0].strip()
+        description = parts[1].strip() if len(parts) > 1 else ""
 
-    # Projektname zeichnen
-    draw.text((PADDING, y), project_name.strip(), font=project_font, fill=TEXT_COLOR)
-    y += draw.textbbox((0, 0), project_name.strip(), font=project_font)[3] + 20
+    # Projektname zeichnen (mit Umbruch)
+    max_text_height = IMG_HEIGHT - 200
+    y = draw_wrapped_text(draw, project_name, project_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+
+    y += 20  # Abstand zwischen Name und Beschreibung
 
     # Beschreibung zeichnen
     if description:
-        max_text_height = IMG_HEIGHT - 200
-        y = draw_text_block(draw, description.strip(), description_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+        y = draw_wrapped_text(draw, description, description_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
     # Telegram-Link unten
     draw.text((PADDING, IMG_HEIGHT - 80), "Telegram: @deutsche_in_dubai", font=link_font, fill=TEXT_COLOR)
