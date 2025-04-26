@@ -12,15 +12,14 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Kategorien und Prompts
 CATEGORIES = [
-    ("off_plan_project", 
-     "Nenne ein aktuelles, offiziell angekündigtes Dubai Off-Plan Immobilienprojekt. "
-     "Gib zuerst ausschließlich den Projektnamen, dann ein Zeilenumbruch, "
-     "dann eine fließende, kurze Beschreibung in maximal 2 Sätzen auf Deutsch "
-     "(inklusive Fertigstellungstermin, falls bekannt). "
-     "Kein 'Projektname:', keine Listen, keine Stichpunkte, keine Zusätze.")
+    ("off_plan_project",
+     "Nenne ein aktuelles, neu angekündigtes oder im Bau befindliches Off-Plan Immobilienprojekt in Dubai. "
+     "Der geplante Fertigstellungstermin muss 2025 oder später liegen."
+     "Gib zuerst nur den Projektnamen (ohne Zusatz), dann ein Zeilenumbruch, dann eine kurze fließende Beschreibung "
+     "(maximal 2 stilvolle Sätze auf Deutsch, inklusive Fertigstellungstermin falls bekannt). "
+     "Keine Listen, keine Einleitungen, keine Stichwörter, nur sauberer Text.")
 ]
 
-# Design Settings
 IMG_WIDTH = 1080
 IMG_HEIGHT = 1080
 PADDING = 80
@@ -31,17 +30,16 @@ LOGO_FILE = "logo.svg"
 OUTPUT_DIR = "graphics_offplan"
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
-# Funktionen
 def generate_gpt_text(prompt):
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": (
                 "Du bist Immobilien-Content-Creator für Dubai. "
-                "Gib NUR den Projektnamen (keine Zusätze) in einer Zeile. "
-                "Danach ein Zeilenumbruch. "
-                "Dann eine stilvolle, fließende Beschreibung in max. 2 kurzen Sätzen "
-                "auf Deutsch, inklusive Fertigstellungstermin, falls verfügbar."
+                "Gib ein echtes aktuelles Off-Plan Projekt wieder: "
+                "Zuerst nur der Projektnamen (ohne Zusatz), dann ein Zeilenumbruch, dann eine stilvolle Kurzbeschreibung (max. 2 Sätze) "
+                "auf Deutsch, inklusive geplanter Fertigstellung falls verfügbar. "
+                "Keine Listen, keine Stichpunkte, keine Einleitungen oder weiteren Kommentare."
             )},
             {"role": "user", "content": prompt}
         ]
@@ -51,7 +49,9 @@ def generate_gpt_text(prompt):
 def generate_dalle_image(prompt):
     response = client.images.generate(
         model="dall-e-3",
-        prompt=f"{prompt}, real photo, natural colors, wide angle, edge-to-edge composition, modern Dubai architecture",
+        prompt=f"Photorealistic wide-angle image representing the architecture style of {prompt} project in Dubai, "
+               f"matching real building characteristics (without exact copying), natural colors, realistic lighting, soft blur effect, "
+               f"edge-to-edge composition, modern skyline background.",
         n=1,
         size="1024x1024"
     )
@@ -99,7 +99,8 @@ def add_logo(image, index):
 
 def create_post_image(category, text, index):
     content = text.strip().replace("\"", "")
-    dalle_prompt = f"{content}, real photo, natural colors, wide angle, no borders"
+    dalle_prompt = content.split("\n")[0]  # Nur der Projekttitel für DALL-E!
+
     bg_img = generate_dalle_image(dalle_prompt)
     bg_img = add_dark_overlay(bg_img)
 
@@ -115,7 +116,7 @@ def create_post_image(category, text, index):
     draw.text((PADDING, y), category.upper(), font=category_font, fill=TEXT_COLOR, spacing=4)
     y += draw.textbbox((0, 0), category.upper(), font=category_font)[3] + 20
 
-    # Projektname und Beschreibung trennen
+    # Projektname und Beschreibung sauber trennen
     if "\n" in content:
         project_name, description = content.split("\n", 1)
     else:
@@ -123,15 +124,15 @@ def create_post_image(category, text, index):
         project_name = parts[0].strip()
         description = parts[1].strip() if len(parts) > 1 else ""
 
-    # Projektname groß
+    # Projektname groß und schön umbrechen
     max_text_height = IMG_HEIGHT - 200
-    y = draw_wrapped_text(draw, project_name.strip(), project_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+    y = draw_wrapped_text(draw, project_name, project_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
-    y += 20  # Abstand
+    y += 20  # Abstand zwischen Name und Text
 
-    # Beschreibung kleiner
+    # Beschreibung zeichnen
     if description:
-        y = draw_wrapped_text(draw, description.strip(), description_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+        y = draw_wrapped_text(draw, description, description_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
     # Telegram-Link unten
     draw.text((PADDING, IMG_HEIGHT - 80), "Telegram: @deutsche_in_dubai", font=link_font, fill=TEXT_COLOR)
