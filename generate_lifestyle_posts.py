@@ -12,7 +12,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 CATEGORIES = [
     ("hidden_gem", "Nenne einen echten, realen Ort in Dubai, der weniger bekannt, aber öffentlich zugänglich und sehenswert ist. Beschreibe ihn in 1-2 Sätzen auf Deutsch, ohne Übertreibung oder Erfindung."),
     ("lifehack", "Nenne einen echten, praktischen Dubai-Alltagstipp für Expats oder Touristen in maximal 2 kurzen Sätzen auf Deutsch. Keine Erfindungen."),
-    ("event", "Nenne ein reales Event, das im April 2025 in Dubai stattfindet. Beschreibe es in max. 2 kurzen, faktischen Sätzen auf Deutsch."),
+    ("event", "Nenne ein echtes, öffentlich angekündigtes Event, das demnächst oder regelmäßig in Dubai stattfindet – wie Festivals, Ausstellungen, Konzerte oder Messen. Antworte mit Titel + 1 Satz Beschreibung auf Deutsch. Keine Spekulation. Keine Disclaimer."),
     ("fun_fact", "Nenne einen überprüfbaren Fakt über Dubai, der überraschend ist. Formuliere sachlich auf Deutsch in max. 2 Sätzen."),
     ("quote", "Gib ein inspirierendes Zitat mit Dubai-Bezug oder Wüstenflair wieder – keine Erfindungen, sondern stilvoller, echter Ausdruck.")
 ]
