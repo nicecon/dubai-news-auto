@@ -7,8 +7,10 @@ import requests
 from io import BytesIO
 import cairosvg
 
+# OpenAI Client mit API-Key
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Kategorien und zugehörige Prompts
 CATEGORIES = [
     ("off_plan_project", "Nenne ein aktuelles, öffentlich angekündigtes Dubai Off-Plan Immobilienprojekt. Gib Projektname und eine fließende, kurze Beschreibung auf Deutsch, maximal 2 Sätze. Keine Erfindungen, nur reale Projekte.")
 ]
@@ -18,21 +20,20 @@ IMG_HEIGHT = 1080
 PADDING = 80
 TEXT_COLOR = "white"
 FONT_BOLD = "fonts/Montserrat-SemiBold.ttf"
+FONT_LIGHT = "fonts/Montserrat-Light.ttf"
 LOGO_FILE = "logo.svg"
 OUTPUT_DIR = "graphics_offplan"
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
-
 
 def generate_gpt_text(prompt):
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "Du bist Immobilien-Content-Creator. Gib echte, aktuelle Dubai Off-Plan Projekte wieder, sachlich und stilvoll."},
+            {"role": "system", "content": "Du bist ein Immobilien-Content-Creator für Dubai. Du gibst echte, aktuelle Off-Plan Projekte wieder, stilvoll und korrekt."},
             {"role": "user", "content": prompt}
         ]
     )
     return response.choices[0].message.content.strip()
-
 
 def generate_dalle_image(prompt):
     response = client.images.generate(
@@ -47,11 +48,30 @@ def generate_dalle_image(prompt):
     img = img.filter(ImageFilter.GaussianBlur(radius=8))
     return img
 
-
 def add_dark_overlay(image):
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 140))
     return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
+def draw_text_block(draw, text, font, start_y, max_width, max_height):
+    words = text.replace("\"", "").split()
+    lines, line = [], ""
+    for word in words:
+        test_line = f"{line} {word}".strip()
+        if draw.textlength(test_line, font=font) <= max_width:
+            line = test_line
+        else:
+            lines.append(line)
+            line = word
+    if line:
+        lines.append(line)
+
+    y = start_y
+    for l in lines:
+        if y + draw.textbbox((0, 0), l, font=font)[3] > max_height:
+            break
+        draw.text((PADDING, y), l, font=font, fill=TEXT_COLOR)
+        y += draw.textbbox((0, 0), l, font=font)[3] + 6
+    return y
 
 def add_logo(image, index):
     tmp_logo = f"logo_tmp_{index}.png"
@@ -61,50 +81,54 @@ def add_logo(image, index):
     os.remove(tmp_logo)
     return image
 
-
 def create_post_image(category, text, index):
     content = text.strip().replace("\"", "")
 
-    dalle_prompt = f"{content}, modern Dubai off-plan real estate, photorealistic, natural colors"
+    dalle_prompt = f"{content}, real photo, natural colors, wide angle, no borders"
     bg_img = generate_dalle_image(dalle_prompt)
     bg_img = add_dark_overlay(bg_img)
 
     draw = ImageDraw.Draw(bg_img)
-    title_font = ImageFont.truetype(FONT_BOLD, 90)
-    desc_font = ImageFont.truetype(FONT_BOLD, 40)
+    project_font = ImageFont.truetype(FONT_BOLD, 90)
+    description_font = ImageFont.truetype(FONT_LIGHT, 40)
     link_font = ImageFont.truetype(FONT_BOLD, 25)
     category_font = ImageFont.truetype(FONT_BOLD, 25)
 
     y = PADDING
+
+    # Kategorie oben einfügen
     draw.text((PADDING, y), category.upper(), font=category_font, fill=TEXT_COLOR, spacing=4)
     y += draw.textbbox((0, 0), category.upper(), font=category_font)[3] + 20
 
-    # Split Project Name and Description
+    # Projektname und Beschreibung trennen
     if "\n" in content:
-        title, description = content.split("\n", 1)
+        project_name, description = content.split("\n", 1)
     else:
-        title, description = content, ""
+        project_name, description = content, ""
 
-    draw.text((PADDING, y), title.strip(), font=title_font, fill=TEXT_COLOR)
-    y += draw.textbbox((0, 0), title.strip(), font=title_font)[3] + 20
+    # Projektname zeichnen
+    draw.text((PADDING, y), project_name.strip(), font=project_font, fill=TEXT_COLOR)
+    y += draw.textbbox((0, 0), project_name.strip(), font=project_font)[3] + 20
 
+    # Beschreibung zeichnen
     if description:
-        draw.text((PADDING, y), description.strip(), font=desc_font, fill=TEXT_COLOR)
+        max_text_height = IMG_HEIGHT - 200
+        y = draw_text_block(draw, description.strip(), description_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
+    # Telegram-Link unten
     draw.text((PADDING, IMG_HEIGHT - 80), "Telegram: @deutsche_in_dubai", font=link_font, fill=TEXT_COLOR)
+
     bg_img = add_logo(bg_img, index)
 
     output_path = os.path.join(OUTPUT_DIR, f"{index + 1}_{category}.png")
     bg_img.save(output_path)
     print(f"✅ Bild gespeichert: {output_path}")
 
-
 def main():
     for i, (category, prompt) in enumerate(CATEGORIES):
         print(f"\n--- Generiere {category} ---")
         gpt_text = generate_gpt_text(prompt)
         create_post_image(category, gpt_text, i)
-
 
 if __name__ == "__main__":
     main()
