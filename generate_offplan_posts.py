@@ -7,14 +7,20 @@ import requests
 from io import BytesIO
 import cairosvg
 
-# OpenAI Client mit API-Key
+# OpenAI Client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Kategorien und zugehörige Prompts
+# Kategorien und Prompts
 CATEGORIES = [
-    ("off_plan_project", "Nenne ein aktuelles, offiziell angekündigtes Dubai Off-Plan Immobilienprojekt. Gib NUR den Projektnamen (ohne Zusätze) und eine fließende, kurze Beschreibung auf Deutsch (maximal 2 Sätze). Falls bekannt, nenne auch den geplanten Fertigstellungstermin. Keine Erfindungen.")
+    ("off_plan_project", 
+     "Nenne ein aktuelles, offiziell angekündigtes Dubai Off-Plan Immobilienprojekt. "
+     "Gib zuerst ausschließlich den Projektnamen, dann ein Zeilenumbruch, "
+     "dann eine fließende, kurze Beschreibung in maximal 2 Sätzen auf Deutsch "
+     "(inklusive Fertigstellungstermin, falls bekannt). "
+     "Kein 'Projektname:', keine Listen, keine Stichpunkte, keine Zusätze.")
 ]
 
+# Design Settings
 IMG_WIDTH = 1080
 IMG_HEIGHT = 1080
 PADDING = 80
@@ -25,11 +31,18 @@ LOGO_FILE = "logo.svg"
 OUTPUT_DIR = "graphics_offplan"
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
+# Funktionen
 def generate_gpt_text(prompt):
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "Du bist Immobilien-Content-Creator für Dubai. Gib reale, aktuelle Off-Plan Projekte wieder: Projektnamen separat + kurze Beschreibung inkl. Fertigstellung, falls verfügbar."},
+            {"role": "system", "content": (
+                "Du bist Immobilien-Content-Creator für Dubai. "
+                "Gib NUR den Projektnamen (keine Zusätze) in einer Zeile. "
+                "Danach ein Zeilenumbruch. "
+                "Dann eine stilvolle, fließende Beschreibung in max. 2 kurzen Sätzen "
+                "auf Deutsch, inklusive Fertigstellungstermin, falls verfügbar."
+            )},
             {"role": "user", "content": prompt}
         ]
     )
@@ -86,7 +99,6 @@ def add_logo(image, index):
 
 def create_post_image(category, text, index):
     content = text.strip().replace("\"", "")
-
     dalle_prompt = f"{content}, real photo, natural colors, wide angle, no borders"
     bg_img = generate_dalle_image(dalle_prompt)
     bg_img = add_dark_overlay(bg_img)
@@ -99,7 +111,7 @@ def create_post_image(category, text, index):
 
     y = PADDING
 
-    # Kategorie oben einfügen
+    # Kategorie oben
     draw.text((PADDING, y), category.upper(), font=category_font, fill=TEXT_COLOR, spacing=4)
     y += draw.textbbox((0, 0), category.upper(), font=category_font)[3] + 20
 
@@ -111,15 +123,15 @@ def create_post_image(category, text, index):
         project_name = parts[0].strip()
         description = parts[1].strip() if len(parts) > 1 else ""
 
-    # Projektname zeichnen (mit Umbruch)
+    # Projektname groß
     max_text_height = IMG_HEIGHT - 200
-    y = draw_wrapped_text(draw, project_name, project_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+    y = draw_wrapped_text(draw, project_name.strip(), project_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
-    y += 20  # Abstand zwischen Name und Beschreibung
+    y += 20  # Abstand
 
-    # Beschreibung zeichnen
+    # Beschreibung kleiner
     if description:
-        y = draw_wrapped_text(draw, description, description_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+        y = draw_wrapped_text(draw, description.strip(), description_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
     # Telegram-Link unten
     draw.text((PADDING, IMG_HEIGHT - 80), "Telegram: @deutsche_in_dubai", font=link_font, fill=TEXT_COLOR)
