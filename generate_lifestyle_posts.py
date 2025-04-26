@@ -1,6 +1,6 @@
-
+# generate_lifestyle_posts.py
 import os
-import openai
+from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from pathlib import Path
@@ -8,8 +8,8 @@ import requests
 from io import BytesIO
 import cairosvg
 
-# OpenAI API Key aus Umgebungsvariable (GitHub Secret)
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# OpenAI Client mit API-Key
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Kategorien und zugehörige Prompts
 CATEGORIES = [
@@ -33,7 +33,7 @@ Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
 
 def generate_gpt_text(prompt):
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "Du bist ein Social-Media-Content-Creator für Dubai."},
@@ -44,12 +44,13 @@ def generate_gpt_text(prompt):
 
 
 def generate_dalle_image(prompt):
-    response = openai.Image.create(
+    response = client.images.generate(
+        model="dall-e-3",
         prompt=prompt,
         n=1,
         size="1024x1024"
     )
-    image_url = response['data'][0]['url']
+    image_url = response.data[0].url
     image_data = requests.get(image_url).content
     return Image.open(BytesIO(image_data)).resize((IMG_WIDTH, IMG_HEIGHT))
 
@@ -89,6 +90,7 @@ def add_logo(image, index):
 
 
 def create_post_image(category, text, index):
+    # GPT-Output verarbeiten
     headline, *rest = text.split("\n")
     summary = " ".join(rest).strip()
 
