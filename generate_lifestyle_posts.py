@@ -101,7 +101,9 @@ def create_post_image(category, text, index):
     font = ImageFont.truetype(FONT_BOLD, 60)
     link_font = ImageFont.truetype(FONT_BOLD, 25)
 
-    y = PADDING
+        category_font = ImageFont.truetype(FONT_BOLD, 25)
+    draw.text((PADDING, y), category.upper(), font=category_font, fill=TEXT_COLOR, spacing=4)
+    y += draw.textbbox((0, 0), category.upper(), font=category_font)[3] + 20
     max_text_height = IMG_HEIGHT - 200
     y = draw_text_block(draw, content, font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
