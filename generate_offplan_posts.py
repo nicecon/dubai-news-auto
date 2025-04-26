@@ -10,14 +10,19 @@ import cairosvg
 # OpenAI Client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Kategorien und Prompts
+current_year = datetime.now().year
+
 CATEGORIES = [
     ("off_plan_project",
-     "Nenne ein aktuelles, neu angekündigtes oder im Bau befindliches Off-Plan Immobilienprojekt in Dubai. "
-     "Der geplante Fertigstellungstermin muss 2025 oder später liegen."
-     "Gib zuerst nur den Projektnamen, dann ein Zeilenumbruch, dann eine kurze fließende Beschreibung "
-     "(maximal 2 stilvolle Sätze auf Deutsch, inklusive Fertigstellungstermin falls bekannt). "
-     "Keine Listen, keine Einleitungen, keine Stichwörter, nur sauberer Text. keine Erfindungen. Alles muss den Tatsachen entsprechen")
+     f"Nenne ein neu angekündigtes oder im Bau befindliches Off-Plan Immobilienprojekt in Dubai. "
+     f"Der geplante Fertigstellungstermin muss {current_year} oder später liegen. "
+     f"Gib zuerst ausschließlich den Projektnamen, dann ein Zeilenumbruch, dann eine stilvolle fließende Kurzbeschreibung "
+     f"(maximal 2 Sätze auf Deutsch), die folgende Informationen enthält: "
+     f"1. Eine sehr kurze Beschreibung des Projekts. "
+     f"2. Den Namen des Entwicklers (Bauträgers). "
+     f"3. Die geplante Fertigstellung. "
+     f"Keine Erfindungen, keine veralteten Projekte, keine Stichpunkte, keine Einleitungen, nur korrekte Fakten und fließender Text."
+    )
 ]
 
 IMG_WIDTH = 1080
