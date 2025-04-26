@@ -1,3 +1,4 @@
+
 import os
 from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -7,8 +8,10 @@ import requests
 from io import BytesIO
 import cairosvg
 
+# OpenAI Client mit API-Key
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Kategorien und zugehörige Prompts
 CATEGORIES = [
     ("hidden_gem", "Nenne einen echten, realen Ort in Dubai, der weniger bekannt, aber öffentlich zugänglich und sehenswert ist. Beschreibe ihn in 1-2 Sätzen auf Deutsch, ohne Übertreibung oder Erfindung."),
     ("lifehack", "Nenne einen echten, praktischen Dubai-Alltagstipp für Expats oder Touristen in maximal 2 kurzen Sätzen auf Deutsch. Keine Erfindungen."),
@@ -26,17 +29,15 @@ LOGO_FILE = "logo.svg"
 OUTPUT_DIR = "graphics"
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
-
 def generate_gpt_text(prompt):
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "Du bist Content-Creator für Instagram-Posts über Dubai. Antworte sachlich, kurz, in einem klaren, stilvollen Ton. Keine Übertreibung, keine erfundenen Aussagen."},
+            {"role": "system", "content": "Du bist ein Social-Media-Content-Creator für Dubai. Die Posts müssen sachlich korrekt, kurz und stilvoll formuliert sein. Keine erfundenen Aussagen."},
             {"role": "user", "content": prompt}
         ]
     )
     return response.choices[0].message.content.strip()
-
 
 def generate_dalle_image(prompt):
     response = client.images.generate(
@@ -49,10 +50,12 @@ def generate_dalle_image(prompt):
     image_data = requests.get(image_url).content
     return Image.open(BytesIO(image_data)).resize((IMG_WIDTH, IMG_HEIGHT))
 
-
 def add_blur(image):
     return image.filter(ImageFilter.GaussianBlur(radius=6))
 
+def add_dark_overlay(image):
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 140))  # 140/255 Transparenz
+    return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
 def draw_text_block(draw, text, font, start_y, max_width, max_height):
     words = text.replace("\"", "").split()
@@ -75,12 +78,6 @@ def draw_text_block(draw, text, font, start_y, max_width, max_height):
         y += draw.textbbox((0, 0), l, font=font)[3] + 6
     return y
 
-
-def add_dark_overlay(image):
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 140))
-    return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
-
-
 def add_logo(image, index):
     tmp_logo = f"logo_tmp_{index}.png"
     cairosvg.svg2png(url=LOGO_FILE, write_to=tmp_logo, output_width=220)
@@ -89,38 +86,45 @@ def add_logo(image, index):
     os.remove(tmp_logo)
     return image
 
-
 def create_post_image(category, text, index):
     content = text.strip().replace("\"", "")
+
     dalle_prompt = f"{content}, real photo, natural colors, wide angle, no borders"
     bg_img = generate_dalle_image(dalle_prompt)
     bg_img = add_blur(bg_img)
     bg_img = add_dark_overlay(bg_img)
 
     draw = ImageDraw.Draw(bg_img)
-    font = ImageFont.truetype(FONT_BOLD, 60)
+    title_font = ImageFont.truetype(FONT_BOLD, 60)
     link_font = ImageFont.truetype(FONT_BOLD, 25)
+    category_font = ImageFont.truetype(FONT_BOLD, 25)
 
-        category_font = ImageFont.truetype(FONT_BOLD, 25)
+    y = PADDING
+
+    # Kategorie oben einfügen
     draw.text((PADDING, y), category.upper(), font=category_font, fill=TEXT_COLOR, spacing=4)
     y += draw.textbbox((0, 0), category.upper(), font=category_font)[3] + 20
-    max_text_height = IMG_HEIGHT - 200
-    y = draw_text_block(draw, content, font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
+    # Platz für Haupttext
+    max_text_height = IMG_HEIGHT - 200
+    y = draw_text_block(draw, content, title_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+
+    # Telegram-Link
     draw.text((PADDING, IMG_HEIGHT - 80), "Telegram: @deutsche_in_dubai", font=link_font, fill=TEXT_COLOR)
+
+    # Logo einfügen
     bg_img = add_logo(bg_img, index)
 
+    # Speichern
     output_path = os.path.join(OUTPUT_DIR, f"{index + 1}_{category}.png")
     bg_img.save(output_path)
     print(f"✅ Bild gespeichert: {output_path}")
-
 
 def main():
     for i, (category, prompt) in enumerate(CATEGORIES):
         print(f"\n--- Generiere {category} ---")
         gpt_text = generate_gpt_text(prompt)
         create_post_image(category, gpt_text, i)
-
 
 if __name__ == "__main__":
     main()
