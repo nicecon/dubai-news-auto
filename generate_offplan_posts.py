@@ -80,7 +80,7 @@ def wrap_text(draw, text, font, max_width):
     return lines
 
 def draw_wrapped_text(draw, text, font, start_y, max_width, max_height):
-    line_spacing = 12  # Hier stellst du deinen festen Zeilenabstand ein (z.B. 8 oder 10)
+    line_spacing = 14  # Hier stellst du deinen festen Zeilenabstand ein (z.B. 8 oder 10)
 
     lines = wrap_text(draw, text, font, max_width)
     y = start_y
