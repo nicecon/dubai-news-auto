@@ -7,16 +7,14 @@ import requests
 from io import BytesIO
 import cairosvg
 
-# OpenAI Client mit API-Key
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Kategorien und zugehörige Prompts
 CATEGORIES = [
-    ("hidden_gem", "Gib mir einen geheimen Ort in Dubai als Instagram-Tipp. Antworte mit maximal einem sehr kurzen Satz (unter 20 Wörtern)."),
-    ("lifehack", "Gib mir einen praktischen Lifehack für das Leben in Dubai. Antworte mit maximal einem sehr kurzen Satz (unter 20 Wörtern)."),
-    ("event", "Gib mir ein Event in Dubai im April 2025, das interessant ist. Antworte mit maximal einem sehr kurzen Satz (unter 20 Wörtern)."),
-    ("fun_fact", "Gib mir einen kuriosen, wenig bekannten Fakt über Dubai. Antworte mit maximal einem sehr kurzen Satz (unter 20 Wörtern)."),
-    ("quote", "Gib mir ein motivierendes Zitat mit Bezug auf Dubai oder Wüste. Kurz und inspirierend, maximal 20 Wörter.")
+    ("hidden_gem", "Nenne einen echten, realen Ort in Dubai, der weniger bekannt, aber öffentlich zugänglich und sehenswert ist. Beschreibe ihn in 1-2 Sätzen auf Deutsch, ohne Übertreibung oder Erfindung."),
+    ("lifehack", "Nenne einen echten, praktischen Dubai-Alltagstipp für Expats oder Touristen in maximal 2 kurzen Sätzen auf Deutsch. Keine Erfindungen."),
+    ("event", "Nenne ein reales Event, das im April 2025 in Dubai stattfindet. Beschreibe es in max. 2 kurzen, faktischen Sätzen auf Deutsch."),
+    ("fun_fact", "Nenne einen überprüfbaren Fakt über Dubai, der überraschend ist. Formuliere sachlich auf Deutsch in max. 2 Sätzen."),
+    ("quote", "Gib ein inspirierendes Zitat mit Dubai-Bezug oder Wüstenflair wieder – keine Erfindungen, sondern stilvoller, echter Ausdruck.")
 ]
 
 IMG_WIDTH = 1080
@@ -33,7 +31,7 @@ def generate_gpt_text(prompt):
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "Du bist ein Social-Media-Content-Creator für Dubai. Die Posts müssen extrem kurz, prägnant und ansprechend sein."},
+            {"role": "system", "content": "Du bist Content-Creator für Instagram-Posts über Dubai. Antworte sachlich, kurz, in einem klaren, stilvollen Ton. Keine Übertreibung, keine erfundenen Aussagen."},
             {"role": "user", "content": prompt}
         ]
     )
@@ -43,7 +41,7 @@ def generate_gpt_text(prompt):
 def generate_dalle_image(prompt):
     response = client.images.generate(
         model="dall-e-3",
-        prompt=f"{prompt}, real photo, natural colors, Dubai",
+        prompt=f"{prompt}, real photo, natural colors, wide angle, no borders, edge-to-edge composition",
         n=1,
         size="1024x1024"
     )
@@ -53,11 +51,11 @@ def generate_dalle_image(prompt):
 
 
 def add_blur(image):
-    return image.filter(ImageFilter.GaussianBlur(radius=8))
+    return image.filter(ImageFilter.GaussianBlur(radius=6))
 
 
 def draw_text_block(draw, text, font, start_y, max_width, max_height):
-    words = text.split()
+    words = text.replace("\"", "").split()
     lines, line = [], ""
     for word in words:
         test_line = f"{line} {word}".strip()
@@ -74,8 +72,13 @@ def draw_text_block(draw, text, font, start_y, max_width, max_height):
         if y + draw.textbbox((0, 0), l, font=font)[3] > max_height:
             break
         draw.text((PADDING, y), l, font=font, fill=TEXT_COLOR)
-        y += draw.textbbox((0, 0), l, font=font)[3] + 4
+        y += draw.textbbox((0, 0), l, font=font)[3] + 6
     return y
+
+
+def add_dark_overlay(image):
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 140))
+    return Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
 
 
 def add_logo(image, index):
@@ -88,19 +91,19 @@ def add_logo(image, index):
 
 
 def create_post_image(category, text, index):
-    headline = text.strip()
-
-    dalle_prompt = f"{headline}, real photo, natural colors, Dubai"
+    content = text.strip().replace("\"", "")
+    dalle_prompt = f"{content}, real photo, natural colors, wide angle, no borders"
     bg_img = generate_dalle_image(dalle_prompt)
     bg_img = add_blur(bg_img)
+    bg_img = add_dark_overlay(bg_img)
 
     draw = ImageDraw.Draw(bg_img)
-    title_font = ImageFont.truetype(FONT_BOLD, 60)
+    font = ImageFont.truetype(FONT_BOLD, 60)
     link_font = ImageFont.truetype(FONT_BOLD, 25)
 
     y = PADDING
-    max_text_height = IMG_HEIGHT - 200  # Reserviert Platz für Logo und Link
-    y = draw_text_block(draw, headline, title_font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
+    max_text_height = IMG_HEIGHT - 200
+    y = draw_text_block(draw, content, font, y, IMG_WIDTH - 2 * PADDING, max_text_height)
 
     draw.text((PADDING, IMG_HEIGHT - 80), "Telegram: @deutsche_in_dubai", font=link_font, fill=TEXT_COLOR)
     bg_img = add_logo(bg_img, index)
