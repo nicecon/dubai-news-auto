@@ -1,29 +1,37 @@
 name: "Generate Lifestyle Posts"
 
-on: schedule: - cron: "0 6 * * *" # Täglich um 06:00 UTC workflow_dispatch:
+on:
+  schedule:
+    - cron: "0 6 * * *" # Täglich um 06:00 UTC (10:00 Dubai-Zeit)
+  workflow_dispatch:
 
-jobs: generate: runs-on: ubuntu-latest steps: - name: Checkout repository uses: actions/checkout@v3
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-- name: Set up Python
-    uses: actions/setup-python@v4
-    with:
-      python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-  - name: Install dependencies
-    run: |
-      python -m pip install --upgrade pip
-      pip install openai pillow cairosvg requests
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openai pillow cairosvg requests
 
-  - name: Generate lifestyle posts
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-    run: |
-      python generate_lifestyle_posts.py
+      - name: Generate lifestyle posts
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python generate_lifestyle_posts.py
 
-  - name: Commit and push results
-    run: |
-      git config user.name github-actions
-      git config user.email github-actions@github.com
-      git add graphics/hags/*.png
-      git commit -m "Automatisch generierte Lifestyle-Posts" || echo "Nichts zu committen"
-      git push
+      - name: Commit and push results
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add graphics/*.png
+          git commit -m "Automatisch generierte Lifestyle-Posts" || echo "Nichts zu committen"
+          git push
