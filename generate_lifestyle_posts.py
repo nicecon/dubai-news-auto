@@ -1,12 +1,13 @@
-
 import os
+import random
+import requests
 from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from datetime import datetime
 from pathlib import Path
-import requests
 from io import BytesIO
 import cairosvg
+from bs4 import BeautifulSoup
 
 # OpenAI Client mit API-Key
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -15,9 +16,9 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 CATEGORIES = [
     ("hidden_gem", "Nenne einen echten, realen Ort in Dubai, der weniger bekannt, aber öffentlich zugänglich und sehenswert ist. Beschreibe ihn in 1-2 Sätzen auf Deutsch, ohne Übertreibung oder Erfindung."),
     ("lifehack", "Nenne einen echten, praktischen Dubai-Alltagstipp für Expats oder Touristen in maximal 2 kurzen Sätzen auf Deutsch. Keine Erfindungen."),
-    ("event", "Nenne ein großes, reales, wiederkehrendes Event in Dubai (z.B. Shopping Festival, Art Dubai, Design Week, Airshow). Beschreibe es stilvoll auf Deutsch in maximal 2 Sätzen. Keine neuen oder spekulativen Termine angeben. Keine Jahreszahlen, außer wenn sie historisch belegt sind."."),
+    ("event", "Nenne ein großes, reales, wiederkehrendes Event in Dubai (z.B. Shopping Festival, Art Dubai, Design Week, Airshow). Beschreibe es stilvoll auf Deutsch in maximal 2 Sätzen. Keine neuen oder spekulativen Termine angeben. Keine Jahreszahlen, außer wenn sie historisch belegt sind."),
     ("fun_fact", "Nenne einen überprüfbaren Fakt über Dubai, der überraschend ist. Formuliere sachlich auf Deutsch in max. 2 Sätzen."),
-    ("quote", "Gib ein inspirierendes Zitat mit Dubai-Bezug oder Wüstenflair wieder – keine Erfindungen, sondern stilvoller, echter Ausdruck.")
+    ("quote", "Gib ein inspirierendes Zitat mit Dubai-Bezug oder Wüstenflair wieder – keine Erfindungen, sondern stilvoller, echter Ausdruck. Bitte nur das Zitat, ohne Nennung des Autors. ")
 ]
 
 IMG_WIDTH = 1080
@@ -28,6 +29,44 @@ FONT_BOLD = "fonts/Montserrat-SemiBold.ttf"
 LOGO_FILE = "logo.svg"
 OUTPUT_DIR = "graphics"
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
+
+def scrape_events():
+    """
+    Holt einen echten Dubai-Event von VisitDubai.
+    Gibt (Titel, Beschreibung) zurück.
+    Fallback auf bekannte Events, falls Website nicht erreichbar.
+    """
+    try:
+        url = "https://www.visitdubai.com/en/whats-on/dubai-events-calendar"
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; GPTBot/1.0;)"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        events = soup.select(".event-card__content")[:10]
+        event_list = []
+        for event in events:
+            title = event.select_one(".event-card__title")
+            description = event.select_one(".event-card__description")
+            if title and description:
+                event_title = title.get_text(strip=True)
+                event_description = description.get_text(strip=True)
+                event_list.append((event_title, event_description))
+
+        if event_list:
+            return random.choice(event_list)
+        else:
+            raise Exception("Keine Events gefunden.")
+
+    except Exception:
+        fallback_events = [
+            ("Dubai Shopping Festival", "Eines der größten Festivals für Shopping und Unterhaltung in Dubai."),
+            ("Art Dubai", "Die bedeutendste Kunstmesse der Region, die internationale und lokale Künstler zusammenbringt."),
+            ("Dubai Design Week", "Eine kreative Plattform für Designer und Innovatoren weltweit."),
+            ("Dubai Food Festival", "Feiere Dubais kulinarische Vielfalt mit Veranstaltungen in der ganzen Stadt.")
+        ]
+        return random.choice(fallback_events)
 
 def generate_gpt_text(prompt):
     response = client.chat.completions.create(
@@ -123,7 +162,13 @@ def create_post_image(category, text, index):
 def main():
     for i, (category, prompt) in enumerate(CATEGORIES):
         print(f"\n--- Generiere {category} ---")
-        gpt_text = generate_gpt_text(prompt)
+
+        if category == "event":
+            event_title, event_description = scrape_events()
+            gpt_text = f"{event_title}\n{event_description}"
+        else:
+            gpt_text = generate_gpt_text(prompt)
+
         create_post_image(category, gpt_text, i)
 
 if __name__ == "__main__":
