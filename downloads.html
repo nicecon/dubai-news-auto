@@ -1,0 +1,99 @@
+<!DOCTYPE html><html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dubai News & Lifestyle Gallery</title>
+  <style>
+    body { font-family: 'Montserrat', sans-serif; margin: 0; background: #f7f7f7; color: #333; }
+    header { background: #222; color: white; padding: 1em; text-align: center; }
+    nav { display: flex; justify-content: center; background: #eee; }
+    nav button { background: none; border: none; padding: 1em; font-size: 1em; cursor: pointer; }
+    nav button.active { background: #ddd; font-weight: bold; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px; }
+    .card { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
+    .card img { width: 100%; height: auto; }
+    .buttons { display: flex; justify-content: space-around; padding: 10px; }
+    .buttons button { background: #007bff; color: white; border: none; padding: 0.5em 1em; border-radius: 5px; cursor: pointer; }
+    .buttons button:hover { background: #0056b3; }
+  </style>
+</head>
+<body><header>
+  <h1>Dubai News & Lifestyle Posts</h1>
+</header><nav>
+  <button id="lifestyleBtn" class="active">Lifestyle</button>
+  <button id="newsBtn">News</button>
+</nav><section id="lifestyle" class="gallery"></section>
+<section id="news" class="gallery" style="display:none;"></section><script>
+const lifestyleSection = document.getElementById('lifestyle');
+const newsSection = document.getElementById('news');
+
+const githubBaseUrl = 'https://raw.githubusercontent.com/nicecon/dubai-news-auto/main/graphics/';
+
+const images = [
+  '5_quote.png',
+  '4_fun_fact.png',
+  '3_event.png',
+  '2_lifehack.png',
+  '1_hidden_gem.png',
+  'news_3.png',
+  'news_2.png',
+  'news_1.png'
+];
+
+images.forEach(img => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const image = document.createElement('img');
+  image.src = githubBaseUrl + img;
+  card.appendChild(image);
+
+  const buttons = document.createElement('div');
+  buttons.className = 'buttons';
+
+  const downloadBtn = document.createElement('button');
+  downloadBtn.innerText = 'Download';
+  downloadBtn.onclick = async () => {
+    const response = await fetch(image.src);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = img;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const telegramBtn = document.createElement('button');
+  telegramBtn.innerText = 'Telegram';
+  telegramBtn.onclick = () => {
+    window.location.href = `https://t.me/share/url?url=${encodeURIComponent(image.src)}`;
+  };
+
+  buttons.appendChild(downloadBtn);
+  buttons.appendChild(telegramBtn);
+  card.appendChild(buttons);
+
+  if (img.startsWith('news')) {
+    newsSection.appendChild(card);
+  } else {
+    lifestyleSection.appendChild(card);
+  }
+});
+
+document.getElementById('lifestyleBtn').onclick = () => {
+  lifestyleSection.style.display = 'grid';
+  newsSection.style.display = 'none';
+  document.getElementById('lifestyleBtn').classList.add('active');
+  document.getElementById('newsBtn').classList.remove('active');
+};
+
+document.getElementById('newsBtn').onclick = () => {
+  lifestyleSection.style.display = 'none';
+  newsSection.style.display = 'grid';
+  document.getElementById('newsBtn').classList.add('active');
+  document.getElementById('lifestyleBtn').classList.remove('active');
+};
+</script></body>
+</html>
