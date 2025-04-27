@@ -1,8 +1,7 @@
 name: "Generate Offplan Posts"
 
 on:
-  schedule:
-    # - cron: "0 7 * * *"  Täglich um 07:00 UTC (11:00 Dubai-Zeit)
+  
   workflow_dispatch:
 
 jobs:
