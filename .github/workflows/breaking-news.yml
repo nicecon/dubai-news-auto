@@ -1,8 +1,8 @@
 name: Breaking Dubai News
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'  # Alle 15 Minuten prüfen
+ # schedule:
+ #   - cron: '*/30 * * * *'  # Alle 15 Minuten prüfen
   workflow_dispatch:
 
 jobs:
