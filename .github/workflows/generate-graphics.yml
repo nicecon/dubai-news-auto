@@ -2,11 +2,11 @@ name: Generate Instagram Graphics
 
 on:
   workflow_dispatch:  # Manuell auslösbar
-  schedule:
-    - cron: '10 5 * * *'   # 09:10 Dubai-Zeit
-    - cron: '10 9 * * *'   # 13:10 Dubai-Zeit
-    - cron: '10 14 * * *'  # 18:10 Dubai-Zeit
-    - cron: '10 18 * * *'  # 22:10 Dubai-Zeit
+  # schedule:
+  #   - cron: '10 5 * * *'   # 09:10 Dubai-Zeit
+  #   - cron: '10 9 * * *'   # 13:10 Dubai-Zeit
+  #   - cron: '10 14 * * *'  # 18:10 Dubai-Zeit
+  #   - cron: '10 18 * * *'  # 22:10 Dubai-Zeit
 
 jobs:
   generate-graphics:
