@@ -2,9 +2,9 @@ name: Update Dubai News
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # 09:00 Dubai-Zeit
+   # - cron: '0 5 * * *'   # 09:00 Dubai-Zeit
     - cron: '0 9 * * *'   # 13:00 Dubai-Zeit
-    - cron: '0 14 * * *'  # 18:00 Dubai-Zeit
+   # - cron: '0 14 * * *'  # 18:00 Dubai-Zeit
     - cron: '0 18 * * *'  # 22:00 Dubai-Zeit
   workflow_dispatch:
 
